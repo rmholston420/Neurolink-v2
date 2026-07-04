@@ -61,3 +61,15 @@ npm run dev
 ## License
 
 MIT
+
+
+## Neurolink-v2 live Athena scaffold
+
+This repository now includes a domain-sliced scaffold for discovering a Muse Athena, starting a BrainFlow session, streaming live data over WebSocket, and rendering it in a React frontend.
+
+### New areas
+- `neurolink_v2/device_control/`
+- `neurolink_v2/signal_pipeline/`
+- `neurolink_v2/api_streaming/`
+- `frontend/`
+- `docs/`
