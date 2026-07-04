@@ -1,50 +1,157 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+
+const card = {
+  background: '#131c31',
+  padding: 16,
+  borderRadius: 12,
+  boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+}
 
 function App() {
   const [devices, setDevices] = useState([])
-  const [status, setStatus] = useState('idle')
-  const [frame, setFrame] = useState(null)
-  const apiBase = useMemo(() => 'http://localhost:8000', [])
+  const [deviceStatus, setDeviceStatus] = useState(null)
+  const [streamStatus, setStreamStatus] = useState('idle')
+  const [selectedAddress, setSelectedAddress] = useState('')
+  const [latest, setLatest] = useState({ eeg: null, optical: null, imu: null })
+  const [events, setEvents] = useState([])
+  const wsRef = useRef(null)
+  const apiBase = useMemo(() => 'http://localhost:8000/api', [])
 
-  async function scan() {
-    setStatus('scanning')
-    const r = await fetch(`${apiBase}/devices/scan`)
-    const data = await r.json()
-    setDevices(data)
-    setStatus('ready')
+  function pushEvent(message) {
+    setEvents((prev) => [new Date().toLocaleTimeString() + ' — ' + message, ...prev].slice(0, 10))
   }
 
-  async function start(macAddress = '') {
-    await fetch(`${apiBase}/session/start?mac_address=${encodeURIComponent(macAddress)}`, { method: 'POST' })
-    setStatus('streaming')
+  async function refreshStatus() {
+    const r = await fetch(`${apiBase}/device/status`)
+    const data = await r.json()
+    setDeviceStatus(data)
+    return data
+  }
+
+  async function scan() {
+    const r = await fetch(`${apiBase}/device/scan`)
+    const data = await r.json()
+    setDevices(data.devices || [])
+    if ((data.devices || []).length && !selectedAddress) {
+      setSelectedAddress(data.devices[0].address)
+    }
+    pushEvent(`scan complete: ${data.count || 0} Muse candidate(s)`)
+  }
+
+  async function connect() {
+    const r = await fetch(`${apiBase}/device/connect`, { method: 'POST' })
+    const data = await r.json()
+    await refreshStatus()
+    pushEvent(`device ${data.status}`)
+  }
+
+  async function disconnectDevice() {
+    const r = await fetch(`${apiBase}/device/disconnect`, { method: 'POST' })
+    const data = await r.json()
+    setStreamStatus('idle')
+    await refreshStatus()
+    pushEvent(`device ${data.status}`)
+  }
+
+  async function startStream() {
+    const r = await fetch(`${apiBase}/stream/start`, { method: 'POST' })
+    const data = await r.json()
+    setStreamStatus(data.status || 'unknown')
+    pushEvent(`stream ${data.status || 'unknown'}`)
+  }
+
+  async function stopStream() {
+    const r = await fetch(`${apiBase}/stream/stop`, { method: 'POST' })
+    const data = await r.json()
+    setStreamStatus(data.status || 'stopped')
+    pushEvent(`stream ${data.status || 'stopped'}`)
   }
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws/live')
-    ws.onmessage = (event) => setFrame(JSON.parse(event.data))
+    refreshStatus().catch(() => {})
+    const ws = new WebSocket('ws://localhost:8000/api/stream/ws')
+    wsRef.current = ws
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data)
+      if (msg.type === 'ping') return
+      if (msg.type === 'eeg') setLatest((prev) => ({ ...prev, eeg: msg }))
+      if (msg.type === 'optical') setLatest((prev) => ({ ...prev, optical: msg }))
+      if (msg.type === 'imu') setLatest((prev) => ({ ...prev, imu: msg }))
+    }
+    ws.onopen = () => pushEvent('websocket connected')
+    ws.onclose = () => pushEvent('websocket disconnected')
     return () => ws.close()
   }, [])
 
+  const eegChannels = latest.eeg?.channel_names || deviceStatus?.channel_names || []
+  const eegSampleCount = latest.eeg?.timestamps?.length || 0
+  const opticalSampleCount = latest.optical?.timestamps?.length || 0
+  const imuSampleCount = latest.imu?.timestamps?.length || 0
+
   return (
-    <main style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
-      <h1>Neurolink-v2</h1>
-      <p>Find a Muse Athena, connect, and inspect live EEG session frames.</p>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-        <button onClick={scan}>Scan Devices</button>
-        <button onClick={() => start(devices[0]?.address || '')}>Start Stream</button>
-      </div>
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        <div style={{ background: '#131c31', padding: 16, borderRadius: 12 }}>
-          <h2>Nearby Muse Devices</h2>
-          <pre>{JSON.stringify(devices, null, 2)}</pre>
+    <main style={{ padding: 24, maxWidth: 1200, margin: '0 auto', color: '#e5eefc' }}>
+      <h1 style={{ marginBottom: 8 }}>Neurolink-v2</h1>
+      <p style={{ marginTop: 0, color: '#9eb0d1' }}>
+        Domain-integrated Muse Athena console using the existing FastAPI device and stream routes.
+      </p>
+
+      <section style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <button onClick={scan}>Scan</button>
+        <button onClick={connect}>Connect</button>
+        <button onClick={disconnectDevice}>Disconnect</button>
+        <button onClick={startStream}>Start Stream</button>
+        <button onClick={stopStream}>Stop Stream</button>
+      </section>
+
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginBottom: 16 }}>
+        <div style={card}>
+          <h2>Device</h2>
+          <p>Streaming: {String(deviceStatus?.is_streaming || false)}</p>
+          <p>Has board: {String(deviceStatus?.has_board || false)}</p>
+          <p>Preset: {deviceStatus?.preset || 'n/a'}</p>
+          <p>Selected address: {selectedAddress || 'auto'}</p>
         </div>
-        <div style={{ background: '#131c31', padding: 16, borderRadius: 12 }}>
-          <h2>Latest Frame</h2>
-          <pre>{JSON.stringify(frame, null, 2)}</pre>
+        <div style={card}>
+          <h2>Live counts</h2>
+          <p>EEG samples: {eegSampleCount}</p>
+          <p>Optical samples: {opticalSampleCount}</p>
+          <p>IMU samples: {imuSampleCount}</p>
+        </div>
+        <div style={card}>
+          <h2>EEG channels</h2>
+          <p>{eegChannels.length ? eegChannels.join(', ') : 'No channels yet'}</p>
+          <p>Stream state: {streamStatus}</p>
         </div>
       </section>
-      <p>Status: {status}</p>
+
+      <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
+        <div style={card}>
+          <h2>Discovered Muse devices</h2>
+          <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(devices, null, 2)}</pre>
+        </div>
+        <div style={card}>
+          <h2>Recent events</h2>
+          <ul>
+            {events.map((e) => <li key={e}>{e}</li>)}
+          </ul>
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginTop: 16 }}>
+        <div style={card}>
+          <h2>Latest EEG frame</h2>
+          <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(latest.eeg, null, 2)}</pre>
+        </div>
+        <div style={card}>
+          <h2>Latest optical frame</h2>
+          <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(latest.optical, null, 2)}</pre>
+        </div>
+        <div style={card}>
+          <h2>Latest IMU frame</h2>
+          <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(latest.imu, null, 2)}</pre>
+        </div>
+      </section>
     </main>
   )
 }
