@@ -15,7 +15,6 @@ __pycache__/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
-frontend/node_modules/.vite/
 
 # Local data / generated outputs
 data/
@@ -32,7 +31,16 @@ rewrite_*.py
 add_*.py
 quiet_stream_logs.py
 
+# Optional local helper scripts
+frontend/clear_vite_cache.py
+frontend/improve_band_chart_scaling.py
+frontend/restart_frontend.py
+frontend/set_default_alpha_focus.py
+frontend/simplify_band_chart_focus.py
+improve_bandpower_dynamics.py
+
 # OS / editor
 .DS_Store
 .vscode/
 .idea/
+tools/
