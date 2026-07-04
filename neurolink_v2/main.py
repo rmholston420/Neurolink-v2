@@ -9,13 +9,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from neurolink_v2.domain.config.settings import settings
 from neurolink_v2.domain.device.router import router as device_router
 from neurolink_v2.domain.stream.router import router as stream_router
+from neurolink_v2.domain.stream.recording_router import router as stream_recording_router
 from neurolink_v2.domain.session.router import router as session_router
+from neurolink_v2.domain.session.analysis_router import router as session_analysis_router
 from neurolink_v2.domain.session.db import init_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: initialise DB.  Shutdown: nothing extra needed (device is
+    """Startup: initialise DB. Shutdown: nothing extra needed (device is
     stopped via the /device/disconnect endpoint)."""
     await init_db()
     yield
@@ -39,7 +41,9 @@ def create_app() -> FastAPI:
 
     app.include_router(device_router, prefix="/api/device", tags=["Device"])
     app.include_router(stream_router, prefix="/api/stream", tags=["Stream"])
+    app.include_router(stream_recording_router, prefix="/api/stream", tags=["Stream Recording"])
     app.include_router(session_router, prefix="/api/sessions", tags=["Sessions"])
+    app.include_router(session_analysis_router, prefix="/api/sessions", tags=["Session Analysis"])
 
     return app
 

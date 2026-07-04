@@ -1,0 +1,38 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Env / secrets
+.env
+.env.*
+*.secret
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/node_modules/.vite/
+
+# Local data / generated outputs
+data/
+output/
+*.log
+*.csv
+*.png
+
+# Backups / scratch / patch scripts
+*.bak
+patch_*.py
+fix_*.py
+rewrite_*.py
+add_*.py
+quiet_stream_logs.py
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

@@ -1,21 +1,17 @@
-"""EEG band-power computation using BrainFlow PSD utilities.
+from __future__ import annotations
 
-Bands
------
-Delta  0.5 –  4 Hz
-Theta  4   –  8 Hz
-Alpha  8   – 13 Hz
-Beta  13   – 30 Hz
-Gamma 30   – 45 Hz
-"""
+from typing import Dict, Any
 
 import numpy as np
-from brainflow.data_filter import DataFilter, DetrendOperations, WindowOperations
+from brainflow.data_filter import DataFilter, WindowOperations
+from brainflow.exit_codes import BrainFlowError
 
-SAMPLE_RATE = 256  # Muse S Athena EEG sample rate (Hz)
+SAMPLERATE = 256
+MIN_SAMPLES = 128
+MAX_WINDOW_SAMPLES = 512
 
 BANDS = {
-    "delta": (0.5, 4.0),
+    "delta": (1.0, 4.0),
     "theta": (4.0, 8.0),
     "alpha": (8.0, 13.0),
     "beta": (13.0, 30.0),
@@ -23,46 +19,102 @@ BANDS = {
 }
 
 
-def _psd_for(samples: list[float]):
-    data = np.array(samples, dtype=np.float64)
-    DataFilter.detrend(data, DetrendOperations.CONSTANT.value)
-    nfft = DataFilter.get_nearest_power_of_two(len(data))
-    if nfft < 8:
-        nfft = 8
-    usable = data[-nfft:]
-    return DataFilter.get_psd_welch(
-        usable,
-        nfft,
-        nfft // 2,
-        SAMPLE_RATE,
-        WindowOperations.HANNING.value,
-    )
+def _zero_bands() -> Dict[str, float]:
+    return {name: 0.0 for name in BANDS}
 
 
-def compute_band_powers(samples: list[float]) -> dict[str, float]:
-    """Return relative band powers (0-1) for a single EEG channel."""
-    if len(samples) < 64:
-        return {b: 0.0 for b in BANDS}
+def _safe_window(samples) -> np.ndarray:
+    data = np.asarray(samples, dtype=np.float64).flatten()
+    if data.size == 0:
+        return data
+    return data[-min(data.size, MAX_WINDOW_SAMPLES):]
 
-    psd = _psd_for(samples)
-    powers = {
-        band: float(DataFilter.get_band_power(psd, low, high))
-        for band, (low, high) in BANDS.items()
+
+def _prepare_psd_input(samples) -> tuple[np.ndarray, int] | tuple[None, None]:
+    data = _safe_window(samples)
+    if data.size < MIN_SAMPLES:
+        return None, None
+
+    data = data - np.mean(data)
+    nfft = DataFilter.get_nearest_power_of_two(data.size)
+
+    if nfft < MIN_SAMPLES or nfft > data.size:
+        return None, None
+
+    window = np.ascontiguousarray(data[-nfft:], dtype=np.float64)
+    return window, nfft
+
+
+def compute_band_powers_raw(samples) -> Dict[str, float]:
+    prepared = _prepare_psd_input(samples)
+    if prepared[0] is None:
+        return _zero_bands()
+
+    window, nfft = prepared
+    try:
+        psd = DataFilter.get_psd_welch(
+            window,
+            nfft,
+            nfft // 2,
+            SAMPLERATE,
+            WindowOperations.BLACKMAN_HARRIS.value,
+        )
+    except BrainFlowError:
+        return _zero_bands()
+    except Exception:
+        return _zero_bands()
+
+    raw = {}
+    for name, (low, high) in BANDS.items():
+        try:
+            power = float(DataFilter.get_band_power(psd, low, high))
+        except Exception:
+            power = 0.0
+        raw[name] = max(power, 0.0)
+
+    return raw
+
+
+def normalize_band_powers(raw: Dict[str, float]) -> Dict[str, float]:
+    total = float(sum(max(float(v), 0.0) for v in raw.values()))
+    if total <= 1e-12:
+        return _zero_bands()
+    return {name: round(max(float(raw.get(name, 0.0)), 0.0) / total, 6) for name in BANDS}
+
+
+def compute_band_powers(samples) -> Dict[str, float]:
+    raw = compute_band_powers_raw(samples)
+    return normalize_band_powers(raw)
+
+
+def compute_band_powers_debug(samples) -> Dict[str, Any]:
+    prepared = _prepare_psd_input(samples)
+    if prepared[0] is None:
+        return {
+            "ok": False,
+            "sample_rate": SAMPLERATE,
+            "window_samples": int(len(_safe_window(samples))),
+            "nfft": 0,
+            "total_power": 0.0,
+            "raw": _zero_bands(),
+            "normalized": _zero_bands(),
+        }
+
+    window, nfft = prepared
+    raw = compute_band_powers_raw(window)
+    normalized = normalize_band_powers(raw)
+    total_power = float(sum(raw.values()))
+
+    return {
+        "ok": total_power > 1e-12,
+        "sample_rate": SAMPLERATE,
+        "window_samples": int(len(window)),
+        "nfft": int(nfft),
+        "total_power": round(total_power, 12),
+        "raw": {k: round(float(v), 12) for k, v in raw.items()},
+        "normalized": normalized,
     }
-    total = sum(powers.values()) or 1.0
-    return {band: round(p / total, 4) for band, p in powers.items()}
 
 
-def compute_alpha_peak(samples: list[float]) -> float:
-    """Estimate the dominant frequency within the alpha band (8-13 Hz)."""
-    if len(samples) < 128:
-        return 0.0
-
-    psd = _psd_for(samples)
-    amplitudes, freqs = psd
-    alpha_pairs = [(freq, amp) for amp, freq in zip(amplitudes, freqs) if 8.0 <= freq <= 13.0]
-    if not alpha_pairs:
-        return 0.0
-
-    peak_freq, _ = max(alpha_pairs, key=lambda item: item[1])
-    return float(round(peak_freq, 2))
+def computebandpowers(samples) -> Dict[str, float]:
+    return compute_band_powers(samples)

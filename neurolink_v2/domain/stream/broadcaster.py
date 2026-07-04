@@ -19,7 +19,9 @@ from typing import Set
 from fastapi import WebSocket
 
 from neurolink_v2.domain.device.manager import device_manager
-from neurolink_v2.domain.signal.bandpower import compute_band_powers
+from neurolink_v2.domain.signal.bandpower import compute_band_powers, compute_band_powers_debug
+from neurolink_v2.domain.signal.quality import classify_bandpower_quality
+from neurolink_v2.domain.stream import recorder
 
 log = logging.getLogger(__name__)
 
@@ -87,12 +89,20 @@ class StreamBroadcaster:
             if snap:
                 # Attach live band powers to the EEG frame
                 band_powers = {}
+                band_debug = {}
+                band_quality = {}
                 for name, samples in snap["eeg"].items():
                     if samples:
                         band_powers[name] = compute_band_powers(samples)
+                        debug = compute_band_powers_debug(samples)
+                        band_debug[name] = debug
+                        band_quality[name] = classify_bandpower_quality(debug)
                 snap["type"] = "eeg"
                 snap["band_powers"] = band_powers
+                snap["band_debug"] = band_debug
+                snap["band_quality"] = band_quality
                 snap["battery"] = await device_manager.get_battery_level()
+                recorder.record_packet("eeg", snap)
                 await self.broadcast(snap)
 
     async def _optical_pump(self) -> None:
@@ -104,6 +114,7 @@ class StreamBroadcaster:
             snap = await device_manager.get_optical_snapshot()
             if snap:
                 snap["type"] = "optical"
+                recorder.record_packet("optical", snap)
                 await self.broadcast(snap)
 
     async def _imu_pump(self) -> None:
@@ -115,6 +126,7 @@ class StreamBroadcaster:
             snap = await device_manager.get_imu_snapshot()
             if snap:
                 snap["type"] = "imu"
+                recorder.record_packet("imu", snap)
                 await self.broadcast(snap)
 
 
