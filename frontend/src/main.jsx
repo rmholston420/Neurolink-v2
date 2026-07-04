@@ -16,7 +16,7 @@ function App() {
   const [latest, setLatest] = useState({ eeg: null, optical: null, imu: null })
   const [events, setEvents] = useState([])
   const wsRef = useRef(null)
-  const apiBase = useMemo(() => 'http://localhost:8000/api', [])
+  const apiBase = useMemo(() => 'http://localhost:8008/api', [])
 
   function pushEvent(message) {
     setEvents((prev) => [new Date().toLocaleTimeString() + ' — ' + message, ...prev].slice(0, 10))
@@ -70,7 +70,7 @@ function App() {
 
   useEffect(() => {
     refreshStatus().catch(() => {})
-    const ws = new WebSocket('ws://localhost:8000/api/stream/ws')
+    const ws = new WebSocket('ws://localhost:8008/api/stream/ws')
     wsRef.current = ws
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data)
