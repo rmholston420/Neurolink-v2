@@ -85,9 +85,18 @@ function App() {
   }, [])
 
   const eegChannels = latest.eeg?.channel_names || deviceStatus?.channel_names || []
-  const eegSampleCount = latest.eeg?.timestamps?.length || 0
-  const opticalSampleCount = latest.optical?.timestamps?.length || 0
-  const imuSampleCount = latest.imu?.timestamps?.length || 0
+  const eegSampleCount = latest.eeg?.ts?.length || latest.eeg?.timestamps?.length || 0
+  const opticalSampleCount = latest.optical?.ts?.length || latest.optical?.timestamps?.length || 0
+  const imuSampleCount = latest.imu?.ts?.length || latest.imu?.timestamps?.length || 0
+
+  const bandPowers = latest.eeg?.band_powers || {}
+  const battery =
+    latest.eeg?.battery ??
+    latest.optical?.battery ??
+    latest.imu?.battery ??
+    deviceStatus?.battery ??
+    deviceStatus?.battery_level ??
+    null
 
   return (
     <main style={{ padding: 24, maxWidth: 1200, margin: '0 auto', color: '#e5eefc' }}>
@@ -122,6 +131,28 @@ function App() {
           <h2>EEG channels</h2>
           <p>{eegChannels.length ? eegChannels.join(', ') : 'No channels yet'}</p>
           <p>Stream state: {streamStatus}</p>
+        </div>
+      </section>
+
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 16 }}>
+        <div style={card}>
+          <h2>Battery</h2>
+          <p>{battery == null ? 'No battery data yet' : `${battery}`}</p>
+        </div>
+        <div style={card}>
+          <h2>Band powers</h2>
+          {Object.keys(bandPowers).length === 0 ? (
+            <p>No band-power data yet</p>
+          ) : (
+            <div>
+              {Object.entries(bandPowers).map(([channel, bands]) => (
+                <div key={channel} style={{ marginBottom: 12 }}>
+                  <strong>{channel}</strong>
+                  <pre style={{ whiteSpace: 'pre-wrap', marginTop: 6 }}>{JSON.stringify(bands, null, 2)}</pre>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

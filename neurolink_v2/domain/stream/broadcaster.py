@@ -92,6 +92,7 @@ class StreamBroadcaster:
                         band_powers[name] = compute_band_powers(samples)
                 snap["type"] = "eeg"
                 snap["band_powers"] = band_powers
+                snap["battery"] = await device_manager.get_battery_level()
                 await self.broadcast(snap)
 
     async def _optical_pump(self) -> None:
