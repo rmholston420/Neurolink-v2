@@ -429,7 +429,7 @@ function BandPowerChart({ history, selectedBand, onSelectBand }) {
   )
 }
 
-function App() {
+export function App() {
   const [devices, setDevices] = useState([])
   const [deviceStatus, setDeviceStatus] = useState(null)
   const [streamStatus, setStreamStatus] = useState('idle')
@@ -1563,4 +1563,8 @@ function App() {
   )
 }
 
-createRoot(document.getElementById('root')).render(<App />)
+const rootElement = document.getElementById('root')
+
+if (rootElement) {
+  createRoot(rootElement).render(<App />)
+}
