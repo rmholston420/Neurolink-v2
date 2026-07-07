@@ -74,7 +74,10 @@ def _line_count_recording_label_for_session(session_path: Path) -> str:
 
 def _recording_metadata_for_session(session_path: Path | None) -> dict:
     if session_path is None:
-        return {"recording_label": "unknown"}
+        return {
+            "recording_label": "unknown",
+            "recording_metadata_source": "unknown",
+        }
 
     manifest = _load_session_manifest(session_path)
     if manifest:
@@ -91,10 +94,12 @@ def _recording_metadata_for_session(session_path: Path | None) -> dict:
             "start_time": manifest.get("start_time"),
             "stop_time": manifest.get("stop_time"),
             "manifest_path": str(_manifest_path_for_session(session_path)),
+            "recording_metadata_source": "manifest",
         }
 
     return {
         "recording_label": _line_count_recording_label_for_session(session_path),
+        "recording_metadata_source": "fallback",
     }
 
 def _inject_short_session_caution(summary: dict, session_path: Path | None) -> dict:

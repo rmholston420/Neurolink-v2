@@ -200,6 +200,7 @@ def test_recording_metadata_prefers_manifest(tmp_path):
     assert metadata["eeg_packets"] == 25
     assert metadata["packet_counts"]["eeg"] == 25
     assert metadata["manifest_path"] == str(manifest_path)
+    assert metadata["recording_metadata_source"] == "manifest"
 
 
 def test_recording_metadata_falls_back_without_manifest(tmp_path):
@@ -219,6 +220,7 @@ def test_recording_metadata_falls_back_without_manifest(tmp_path):
     assert metadata["recording_label"] == "short"
     assert "manifest_path" not in metadata
     assert metadata.get("duration_seconds") is None
+    assert metadata["recording_metadata_source"] == "fallback"
 
 
 @pytest.mark.asyncio
@@ -295,6 +297,7 @@ async def test_analyze_by_name_returns_recording_metadata(tmp_path, monkeypatch)
     assert body["recording_metadata"]["recording_label"] == "ok"
     assert body["recording_metadata"]["duration_seconds"] == 12.5
     assert body["recording_metadata"]["eeg_packets"] == 25
+    assert body["recording_metadata"]["recording_metadata_source"] == "manifest"
     assert body["summary"]["recording_label"] == "ok"
 
 
@@ -381,5 +384,6 @@ async def test_analyze_latest_returns_recording_metadata(tmp_path, monkeypatch):
     assert body["recording_metadata"]["recording_label"] == "ok"
     assert body["recording_metadata"]["duration_seconds"] == 12.5
     assert body["recording_metadata"]["eeg_packets"] == 25
+    assert body["recording_metadata"]["recording_metadata_source"] == "manifest"
     assert body["summary"]["recording_label"] == "ok"
 
