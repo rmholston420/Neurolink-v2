@@ -110,6 +110,20 @@ Docs / artifacts:
 
 ## Workflow lessons from this session
 
+## Additional workflow lessons from front-page simplification (2026-07-07, late session)
+
+- Front page is still visually overloaded: live controls, multi-panel live status, latest review, session history, and multiple debug surfaces all share one screen.
+- Three separate scripted attempts to collapse debug and review surfaces in `frontend/src/main.jsx` failed due to brittle JSX anchors and off-by-one tail boundaries. Each failure temporarily broke the build and tests until `git restore -- frontend/src/main.jsx` returned the file to the last known good state.
+- The final correct decision this session was to stop patching the front page and return to the verified baseline: `npm run build` and `npm run test:run` both passed after restoring `frontend/src/main.jsx`, and no UI changes from the failed collapses remain.
+- Future front-page simplification must not use broad multiline replacement patches over long render paths. Instead, it should:
+  - extract the exact local JSX block with `sed -n` before any change,
+  - apply either a very small manual JSX edit or a narrowly scoped one-region patch, and
+  - re-run `npm run build` and `npm run test:run` immediately afterward.
+- Debug surfaces (Telemetry, Recent events, Latest optical frame, Latest IMU frame) are good candidates to hide behind a simple `showDebugPanels` toggle, but that work should be done in a fresh session with more careful, incremental edits rather than brittle automated surgery.
+- Today’s failures are intentional lessons: do not attempt large scripted JSX surgery in `frontend/src/main.jsx` without exact local context and a plan to revert quickly if a build breaks.
+
+
+
 1. Inspect exact rendered paths first.
    - For `frontend/src/main.jsx`, use local inspection such as:
      ```bash
