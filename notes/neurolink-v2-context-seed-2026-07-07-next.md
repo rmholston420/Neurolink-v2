@@ -33,7 +33,7 @@ The current baseline is verified and stable:
 - Frontend session history cards now also show `Metadata: heuristic` only for fallback-based legacy metadata
 - Session history recording metadata detail panels now show `Metadata source: heuristic fallback` only for fallback-derived metadata
 - Frontend now has minimal Vitest + Testing Library UI test infrastructure
-- Frontend UI coverage includes a smoke test and a session-history provenance regression test
+- Frontend UI coverage includes a smoke test, a session-history provenance regression test, a review-time Recording context provenance test, and a review-time short-session caution test
 - Latest session review shows a caution in the Signal note card when the analyzed session is short
 - Analysis responses include `recording_metadata`
 - `recording_metadata` includes `recording_metadata_source` with values `manifest`, `fallback`, and `unknown`
@@ -42,9 +42,9 @@ The current baseline is verified and stable:
 ## Latest relevant commits
 Latest pushed commits before this handoff:
 
+- `e424433` — Add short session review caution UI test
+- `ffb77e1` — Add review panel provenance UI test
 - `ca5c63e` — Stabilize frontend UI fetch mocks
-- `9434d7d` — Add session history provenance UI test
-- `e632660` — Refresh tracked handoff note for provenance UI
 
 ## Important files
 ### Backend
@@ -101,25 +101,31 @@ Latest pushed commits before this handoff:
 10. Use exact, paste-ready shell commands only.
 
 ## Best next objective
-Next slice: add one focused frontend test that verifies the review-time `Recording context` provenance rendering for analyzed session responses, so the latest review panel is covered alongside the existing session-history provenance safeguard.
+Next slice: refresh this tracked handoff note so it reflects the newly landed frontend review-coverage work, then begin the next coding session from fresh inspection of the current frontend and backend surfaces to choose a new small objective.
 
 ## Why this is the best next slice
-- Session-history provenance is now covered, and startup fetch noise in Vitest has been cleaned up.
-- The review panel already renders provenance labels such as `persisted manifest`, `heuristic fallback`, and `unknown`, but that path does not yet have direct frontend regression coverage.
-- Adding one review-focused UI test is small, reversible, and stays aligned with the current pattern of tightening confidence around recently added semantics.
-- This improves protection for a user-visible interpretation path without requiring product behavior changes.
+- The previously documented review-panel provenance objective has already been completed and pushed.
+- Frontend UI coverage now protects session-history fallback provenance, review-time manifest provenance, and review-time short-session caution.
+- The highest-value immediate gap is now project-context drift: the tracked note no longer matches the latest landed commits or the current tested frontend coverage.
+- Refreshing the note keeps the next session grounded in the real repo state before selecting a new feature or hardening slice.
 
 ## Exact next-step instructions
-1. Inspect the current frontend test files plus the exact review-panel rendering path in `frontend/src/main.jsx`.
-2. Identify the minimal user flow or state setup needed to render review-time `Recording context`.
-3. Add one focused frontend test that asserts provenance text in the review panel for at least one analyzed-session response.
-4. Keep the slice test-only if possible; avoid changing product logic unless the test reveals a real testability gap.
-5. Run:
+1. Update this note’s latest-commits section and verified frontend UI coverage bullets to reflect the newly landed review tests.
+2. Replace the completed review-panel objective with a workflow note that the next coding session should begin from fresh inspection-driven objective selection.
+3. Run:
    ```bash
    cd ~/Neurolink-v2
-   npm --prefix frontend run test:run
-   npm --prefix frontend run build
-   pytest -q
-   git status
+   git diff -- notes/neurolink-v2-context-seed-2026-07-07-next.md
+   git add notes/neurolink-v2-context-seed-2026-07-07-next.md
+   git commit -m "Refresh handoff note after review UI tests"
+   git push origin main
    ```
-6. Commit only the focused review-panel test coverage change.
+4. In the following session, start with:
+   ```bash
+   cd ~/Neurolink-v2
+   git status
+   pytest -q
+   npm --prefix frontend run build
+   npm --prefix frontend run test:run
+   sed -n '1,260p' notes/neurolink-v2-context-seed-2026-07-07-next.md
+   ```
