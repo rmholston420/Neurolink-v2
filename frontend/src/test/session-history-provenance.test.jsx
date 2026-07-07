@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { App } from '../main.jsx'
 
 const okJson = (data) => ({
@@ -8,6 +8,66 @@ const okJson = (data) => ({
 })
 
 describe('Session history provenance rendering', () => {
+  it('shows persisted manifest provenance in the review-time Recording context card when viewing an analyzed session', async () => {
+    global.fetch = vi.fn(async (input) => {
+      const raw = typeof input === 'string' ? input : (input?.url ?? String(input))
+      const url = raw.replace(/^https?:\/\/[^/]+/, '')
+
+      if (url.includes('/api/stream/recording')) {
+        return okJson({
+          recording: false,
+          path: null,
+        })
+      }
+
+      if (url.includes('/api/sessions/history/list')) {
+        return okJson({
+          status: 'ok',
+          sessions: [
+            {
+              session_name: 'manifest-review-session',
+              timestamp: '2026-07-07T01:10:00Z',
+              analyzed: true,
+              recording_label: 'ok',
+              recording_metadata: {
+                duration_seconds: 98.4,
+                eeg_packets: 412,
+                recording_metadata_source: 'manifest',
+              },
+              summary: {
+                samples: 412,
+                duration_s: 98.4,
+                primary_channel: 'AF7',
+                alpha_over_alpha_beta: 0.61,
+                recording_label: 'ok',
+              },
+            },
+          ],
+        })
+      }
+
+      return okJson({})
+    })
+
+    render(<App />)
+
+    await screen.findByText('manifest-review-session')
+
+    const viewButton = await screen.findByRole('button', { name: 'View' })
+    fireEvent.click(viewButton)
+
+    await waitFor(() => {
+      const recordingContextHeading = screen.getByRole('heading', { name: 'Recording context' })
+      const recordingContextCard = recordingContextHeading.parentElement
+
+      expect(recordingContextCard).toBeTruthy()
+      expect(within(recordingContextCard).getByText('Recording label: ok')).toBeInTheDocument()
+      expect(within(recordingContextCard).getByText('Metadata source: persisted manifest')).toBeInTheDocument()
+      expect(within(recordingContextCard).getByText('Duration (s): 98.4')).toBeInTheDocument()
+      expect(within(recordingContextCard).getByText('EEG packets: 412')).toBeInTheDocument()
+    })
+  })
+
   it('shows heuristic metadata hints only for fallback-derived session metadata', async () => {
     global.fetch = vi.fn(async (input) => {
       const raw = typeof input === 'string' ? input : (input?.url ?? String(input))
