@@ -16,6 +16,13 @@ async def analyze_latest_session():
     repo_root = Path.home() / "Neurolink-v2"
     script_path = repo_root / "tools" / "analyze_session.py"
 
+    if not script_path.exists():
+        return {
+            "status": "error",
+            "stderr": f"Analyzer script not found: {script_path}",
+            "stdout": "",
+        }
+
     proc = subprocess.run(
         [sys.executable, str(script_path)],
         cwd=str(repo_root),
@@ -26,7 +33,7 @@ async def analyze_latest_session():
     if proc.returncode != 0:
         return {
             "status": "error",
-            "stderr": proc.stderr,
+            "stderr": proc.stderr or "Analyzer exited with non-zero status",
             "stdout": proc.stdout,
         }
 
@@ -40,14 +47,35 @@ async def analyze_latest_session():
 
     timeseries_csv, summary_csv, bands_png = lines[-3:]
 
+    def resolve_output_path(value: str) -> Path:
+        return Path(value) if value.startswith("/") else (repo_root / value)
+
+    timeseries_path = resolve_output_path(timeseries_csv)
+    summary_path = resolve_output_path(summary_csv)
+    bands_path = resolve_output_path(bands_png)
+
+    missing = []
+    if not timeseries_path.exists():
+        missing.append(str(timeseries_path))
+    if not summary_path.exists():
+        missing.append(str(summary_path))
+    if not bands_path.exists():
+        missing.append(str(bands_path))
+
+    if missing:
+        return {
+            "status": "error",
+            "stderr": "Analyzer reported artifact paths that do not exist",
+            "stdout": proc.stdout,
+            "missing_artifacts": missing,
+        }
+
     summary = {}
-    summary_path = repo_root / summary_csv if not summary_csv.startswith("/") else Path(summary_csv)
-    if summary_path.exists():
-        with summary_path.open("r", encoding="utf-8") as fh:
-            reader = csv.DictReader(fh)
-            first = next(reader, None)
-            if first:
-                summary = first
+    with summary_path.open("r", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        first = next(reader, None)
+        if first:
+            summary = first
 
     return {
         "status": "ok",

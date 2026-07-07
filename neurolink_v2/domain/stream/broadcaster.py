@@ -16,6 +16,8 @@ import json
 import logging
 from typing import Set
 
+from brainflow.exit_codes import BrainFlowError
+
 from fastapi import WebSocket
 
 from neurolink_v2.domain.device.manager import device_manager
@@ -36,6 +38,7 @@ class StreamBroadcaster:
     def __init__(self) -> None:
         self._clients: Set[WebSocket] = set()
         self._running = False
+        self._tasks: set[asyncio.Task] = set()
 
     async def subscribe(self, ws: WebSocket) -> None:
         await ws.accept()
@@ -68,12 +71,20 @@ class StreamBroadcaster:
         if self._running:
             return
         self._running = True
-        asyncio.create_task(self._eeg_pump())
-        asyncio.create_task(self._optical_pump())
-        asyncio.create_task(self._imu_pump())
+        self._tasks = {
+            asyncio.create_task(self._eeg_pump(), name="eeg-pump"),
+            asyncio.create_task(self._optical_pump(), name="optical-pump"),
+            asyncio.create_task(self._imu_pump(), name="imu-pump"),
+        }
 
     async def stop_pump(self) -> None:
         self._running = False
+        tasks = list(self._tasks)
+        self._tasks.clear()
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     # ------------------------------------------------------------------
     # Pump coroutines
@@ -81,53 +92,91 @@ class StreamBroadcaster:
 
     async def _eeg_pump(self) -> None:
         interval = 1.0 / _EEG_POLL_HZ
-        while self._running:
-            await asyncio.sleep(interval)
-            if not device_manager.is_streaming:
-                continue
-            snap = await device_manager.get_eeg_snapshot()
-            if snap:
-                # Attach live band powers to the EEG frame
-                band_powers = {}
-                band_debug = {}
-                band_quality = {}
-                for name, samples in snap["eeg"].items():
-                    if samples:
-                        band_powers[name] = compute_band_powers(samples)
-                        debug = compute_band_powers_debug(samples)
-                        band_debug[name] = debug
-                        band_quality[name] = classify_bandpower_quality(debug)
-                snap["type"] = "eeg"
-                snap["band_powers"] = band_powers
-                snap["band_debug"] = band_debug
-                snap["band_quality"] = band_quality
-                snap["battery"] = await device_manager.get_battery_level()
-                recorder.record_packet("eeg", snap)
-                await self.broadcast(snap)
+        try:
+            while self._running:
+                await asyncio.sleep(interval)
+                if not self._running or not device_manager.is_streaming:
+                    continue
+                try:
+                    snap = await device_manager.get_eeg_snapshot()
+                except BrainFlowError as error:
+                    if "BOARD_NOT_CREATED_ERROR" in str(error):
+                        log.info("EEG pump stopping after board teardown")
+                        break
+                    log.exception("EEG pump BrainFlow error")
+                    break
+                if snap:
+                    band_powers = {}
+                    band_debug = {}
+                    band_quality = {}
+                    for name, samples in snap["eeg"].items():
+                        if samples:
+                            band_powers[name] = compute_band_powers(samples)
+                            debug = compute_band_powers_debug(samples)
+                            band_debug[name] = debug
+                            band_quality[name] = classify_bandpower_quality(debug)
+                    snap["type"] = "eeg"
+                    snap["band_powers"] = band_powers
+                    snap["band_debug"] = band_debug
+                    snap["band_quality"] = band_quality
+                    try:
+                        snap["battery"] = await device_manager.get_battery_level()
+                    except BrainFlowError as error:
+                        if "BOARD_NOT_CREATED_ERROR" in str(error):
+                            snap["battery"] = None
+                        else:
+                            raise
+                    recorder.record_packet("eeg", snap)
+                    await self.broadcast(snap)
+        except asyncio.CancelledError:
+            log.debug("EEG pump cancelled")
+            raise
 
     async def _optical_pump(self) -> None:
         interval = 1.0 / _OPT_POLL_HZ
-        while self._running:
-            await asyncio.sleep(interval)
-            if not device_manager.is_streaming:
-                continue
-            snap = await device_manager.get_optical_snapshot()
-            if snap:
-                snap["type"] = "optical"
-                recorder.record_packet("optical", snap)
-                await self.broadcast(snap)
+        try:
+            while self._running:
+                await asyncio.sleep(interval)
+                if not self._running or not device_manager.is_streaming:
+                    continue
+                try:
+                    snap = await device_manager.get_optical_snapshot()
+                except BrainFlowError as error:
+                    if "BOARD_NOT_CREATED_ERROR" in str(error):
+                        log.info("Optical pump stopping after board teardown")
+                        break
+                    log.exception("Optical pump BrainFlow error")
+                    break
+                if snap:
+                    snap["type"] = "optical"
+                    recorder.record_packet("optical", snap)
+                    await self.broadcast(snap)
+        except asyncio.CancelledError:
+            log.debug("Optical pump cancelled")
+            raise
 
     async def _imu_pump(self) -> None:
         interval = 1.0 / _IMU_POLL_HZ
-        while self._running:
-            await asyncio.sleep(interval)
-            if not device_manager.is_streaming:
-                continue
-            snap = await device_manager.get_imu_snapshot()
-            if snap:
-                snap["type"] = "imu"
-                recorder.record_packet("imu", snap)
-                await self.broadcast(snap)
+        try:
+            while self._running:
+                await asyncio.sleep(interval)
+                if not self._running or not device_manager.is_streaming:
+                    continue
+                try:
+                    snap = await device_manager.get_imu_snapshot()
+                except BrainFlowError as error:
+                    if "BOARD_NOT_CREATED_ERROR" in str(error):
+                        log.info("IMU pump stopping after board teardown")
+                        break
+                    log.exception("IMU pump BrainFlow error")
+                    break
+                if snap:
+                    snap["type"] = "imu"
+                    recorder.record_packet("imu", snap)
+                    await self.broadcast(snap)
+        except asyncio.CancelledError:
+            log.debug("IMU pump cancelled")
+            raise
 
 
 broadcaster = StreamBroadcaster()

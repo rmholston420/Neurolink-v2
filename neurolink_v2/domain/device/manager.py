@@ -175,7 +175,7 @@ class DeviceManager:
         }
 
     def _sync_connect(self) -> None:
-        BoardShim.enable_dev_board_logger()
+        BoardShim.enable_board_logger()
         params = BrainFlowInputParams()
         if settings.muse_mac_address:
             params.mac_address = settings.muse_mac_address

@@ -2,6 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+_GUIDANCE = {
+    "insufficient-window": "Waiting for enough EEG samples — hold still for 2 seconds.",
+    "flat": "No signal detected. Check headset fit and ensure electrodes contact skin.",
+    "artifact-likely": "Strong muscle artifact. Relax your jaw, soften your forehead, and avoid swallowing or eye movement.",
+    "warn": "Elevated fast-band activity. Reduce facial tension, sit quietly, and breathe slowly.",
+    "good": "Signal quality is good. You may begin your session.",
+}
+
+
 
 def classify_bandpower_quality(debug: Dict[str, Any]) -> Dict[str, Any]:
     if not debug or not debug.get("ok"):
@@ -9,6 +18,7 @@ def classify_bandpower_quality(debug: Dict[str, Any]) -> Dict[str, Any]:
             "status": "insufficient-window",
             "reason": "No valid PSD window",
             "severity": 0,
+            "guidance": _GUIDANCE["insufficient-window"],
         }
 
     total_power = float(debug.get("total_power", 0.0))
@@ -28,6 +38,7 @@ def classify_bandpower_quality(debug: Dict[str, Any]) -> Dict[str, Any]:
             "status": "flat",
             "reason": "No measurable band power",
             "severity": 1,
+            "guidance": _GUIDANCE["flat"],
         }
 
     if gamma >= 0.45 or fast >= 0.80:
@@ -35,6 +46,7 @@ def classify_bandpower_quality(debug: Dict[str, Any]) -> Dict[str, Any]:
             "status": "artifact-likely",
             "reason": "High beta/gamma contamination",
             "severity": 3,
+            "guidance": _GUIDANCE["artifact-likely"],
         }
 
     if gamma >= 0.30 or fast >= 0.60:
@@ -42,6 +54,7 @@ def classify_bandpower_quality(debug: Dict[str, Any]) -> Dict[str, Any]:
             "status": "warn",
             "reason": "Elevated fast-band activity",
             "severity": 2,
+            "guidance": _GUIDANCE["warn"],
         }
 
     if alpha >= 0.35 and fast < 0.45:

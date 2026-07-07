@@ -68,6 +68,120 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, n))
 }
 
+
+function getChannelLabel(channelKey, channelNames = []) {
+  const key = String(channelKey ?? '')
+  const numeric = Number(key)
+
+  if (Array.isArray(channelNames) && Number.isInteger(numeric) && numeric >= 0 && numeric < channelNames.length) {
+    return channelNames[numeric] || key
+  }
+
+  if (Array.isArray(channelNames)) {
+    const direct = channelNames.find((name) => String(name) === key)
+    if (direct) return direct
+  }
+
+  const fallback = {
+    '0': 'TP9',
+    '1': 'AF7',
+    '2': 'AF8',
+    '3': 'TP10',
+  }
+
+  return fallback[key] || key
+}
+
+function formatQualityLabel(status) {
+  if (!status) return 'unknown'
+  return String(status).replaceAll('-', ' ')
+}
+
+function OperatorChannelCard({ channelKey, channelNames, bands, quality }) {
+  const label = getChannelLabel(channelKey, channelNames)
+  const qualityStatus = quality?.status || 'unknown'
+  const qualityReason = quality?.reason || 'No classification yet'
+  const qualityGuidance = quality?.guidance || ''
+  const style = QUALITY_STYLES[qualityStatus] || QUALITY_STYLES.unknown
+
+  return (
+    <div
+      style={{
+        background: '#0b1220',
+        border: '1px solid rgba(158,176,209,0.14)',
+        borderRadius: 12,
+        padding: 12,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+        <div>
+          <div style={{ color: '#e8eefc', fontWeight: 700 }}>{label}</div>
+          <div style={{ color: '#9eb0d1', fontSize: 12 }}>channel {String(channelKey)}</div>
+        </div>
+        <div
+          title={qualityReason}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 10px',
+            borderRadius: 999,
+            background: style.bg,
+            border: `1px solid ${style.border}`,
+            color: style.color,
+            fontSize: 12,
+            fontWeight: 700,
+            textTransform: 'capitalize',
+          }}
+        >
+          {formatQualityLabel(qualityStatus)}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(72px, 1fr))', gap: 8 }}>
+        {BAND_NAMES.map((bandName) => (
+          <div
+            key={bandName}
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(158,176,209,0.10)',
+              borderRadius: 10,
+              padding: 8,
+            }}
+          >
+            <div style={{ color: BAND_COLORS[bandName], fontSize: 12, textTransform: 'capitalize', marginBottom: 4 }}>
+              {bandName}
+            </div>
+            <div style={{ color: '#e8eefc', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>
+              {clamp01(bands?.[bandName] ?? 0).toFixed(3)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 10, color: '#9eb0d1', fontSize: 12 }}>
+        <div><span style={{ color: '#c9d7f2' }}>Reason:</span> {qualityReason}</div>
+        {qualityGuidance ? (
+          <div
+            style={{
+              marginTop: 8,
+              padding: '8px 10px',
+              borderRadius: 10,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(158,176,209,0.12)',
+              color: '#dbe7ff',
+              lineHeight: 1.4,
+            }}
+          >
+            <span style={{ color: '#9eb0d1', display: 'block', marginBottom: 4 }}>Operator guidance</span>
+            {qualityGuidance}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 function buildBandSeries(history, bandName) {
   return history.map((entry, index) => ({
     x: index,
@@ -315,6 +429,43 @@ function App() {
   const wsRef = useRef(null)
   const apiBase = useMemo(() => 'http://localhost:8008/api', [])
 
+  const flattenedBandPowers = useMemo(
+    () => flattenBandPowersForDisplay(latest.eeg?.band_powers || {}),
+    [latest]
+  )
+
+  const channelNames = useMemo(
+    () => latest.eeg?.channel_names || deviceStatus?.channel_names || [],
+    [latest, deviceStatus]
+  )
+
+  const qualityByChannel = useMemo(
+    () => latest.eeg?.band_quality || {},
+    [latest]
+  )
+
+
+
+  const operatorChannelsSection = Object.keys(flattenedBandPowers).length ? (
+    <div style={card}>
+      <h2 style={{ marginTop: 0, marginBottom: 8 }}>Athena channels</h2>
+      <p style={{ color: '#9eb0d1', marginTop: 0, marginBottom: 12 }}>
+        Live per-channel normalized bands with operator-readable signal status.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+        {Object.entries(flattenedBandPowers).map(([channelKey, bands]) => (
+          <OperatorChannelCard
+            key={channelKey}
+            channelKey={channelKey}
+            channelNames={channelNames}
+            bands={bands}
+            quality={qualityByChannel?.[channelKey]}
+          />
+        ))}
+      </div>
+    </div>
+  ) : null
+
   function pushEvent(message) {
     setEvents((prev) => [new Date().toLocaleTimeString() + ' — ' + message, ...prev].slice(0, 10))
   }
@@ -526,34 +677,23 @@ function App() {
         </div>
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 16, marginBottom: 16 }}>
+      {operatorChannelsSection}
+
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16 }}>
         <div style={card}>
-          <h2>Battery</h2>
-          <p>{battery == null ? 'No battery data yet' : `${battery}`}</p>
+          <h2 style={{ marginTop: 0 }}>Battery</h2>
+          <p style={{ fontSize: 28, fontWeight: 700, margin: '6px 0 8px 0', color: '#e8eefc' }}>
+            {battery == null ? '—' : `${Number(battery).toFixed(2)}%`}
+          </p>
+          <p style={{ margin: 0, color: '#9eb0d1' }}>
+            Live board battery estimate from the current Athena stream.
+          </p>
         </div>
+
         <div style={card}>
-          <h2>Band powers</h2>
+          <h2 style={{ marginTop: 0 }}>Signal snapshot</h2>
           {Object.keys(bandPowers).length === 0 ? (
             <p>No band-power data yet</p>
-          ) : (
-            <div>
-              {Object.entries(bandPowers).map(([channel, bands]) => (
-                <div key={channel} style={{ marginBottom: 12 }}>
-                  <strong>{channel}</strong>
-                  <ul style={{ paddingLeft: 16, marginTop: 4 }}>
-                    {Object.entries(bands).map(([name, value]) => (
-                      <li key={name}>{name}: {value}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={card}>
-          <h2>Session metrics</h2>
-          {Object.keys(bandPowers).length === 0 ? (
-            <p>No metrics yet</p>
           ) : (
             (() => {
               const firstChannelBands = Object.values(bandPowers)[0] || {}
@@ -572,13 +712,13 @@ function App() {
 
               let profile = 'mixed'
               if (alphaRatio > 0.55) profile = 'alpha-dominant'
-              else if (thetaDeltaRatio > 0.6) profile = 'theta–delta heavy'
-              else if (fast > slow) profile = 'beta–gamma active'
+              else if (thetaDeltaRatio > 0.6) profile = 'theta-delta heavy'
+              else if (fast > slow) profile = 'beta-gamma active'
 
               return (
                 <div>
                   <p style={{ marginTop: 0, color: '#9eb0d1' }}>First EEG channel, normalized powers.</p>
-                  <p>Profile: {profile}</p>
+                  <p>Profile: <strong>{profile}</strong></p>
                   <p>alpha / (alpha+beta): {alphaRatio.toFixed(3)}</p>
                   <p>theta / (delta+theta): {thetaDeltaRatio.toFixed(3)}</p>
                   <p>slow (δ+θ): {slow.toFixed(3)}</p>
@@ -588,21 +728,36 @@ function App() {
             })()
           )}
         </div>
+
         <div style={card}>
-          <h2>Signal quality</h2>
+          <h2 style={{ marginTop: 0 }}>Channel quality</h2>
           {Object.keys(bandQuality).length === 0 ? (
             <p>No quality data yet</p>
           ) : (
-            <div>
+            <div style={{ display: 'grid', gap: 10 }}>
               {Object.entries(bandQuality).map(([channel, quality]) => (
-                <div key={channel} style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <strong>{channel}</strong>
-                    <QualityBadge quality={quality} />
+                <div
+                  key={channel}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    background: '#0b1220',
+                    border: '1px solid rgba(158,176,209,0.14)',
+                  }}
+                >
+                  <div>
+                    <div style={{ color: '#e8eefc', fontWeight: 600 }}>
+                      {getChannelLabel(channel, channelNames)}
+                    </div>
+                    <div style={{ color: '#9eb0d1', fontSize: 12 }}>
+                      {quality?.reason || 'No reason available'}
+                    </div>
                   </div>
-                  <p style={{ margin: 0, color: '#9eb0d1', fontSize: 12 }}>
-                    {quality?.reason || 'No reason available'}
-                  </p>
+                  <QualityBadge quality={quality} />
                 </div>
               ))}
             </div>
@@ -610,14 +765,72 @@ function App() {
         </div>
 
         <div style={card}>
-          <h2>Bandpower debug</h2>
-          {Object.keys(bandDebug).length === 0 ? (
-            <p>No debug data yet</p>
-          ) : (
-            <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
-              {JSON.stringify(bandDebug, null, 2)}
-            </pre>
-          )}
+          <h2 style={{ marginTop: 0 }}>Session status</h2>
+          <p>
+            Recording:{' '}
+            <strong style={{ color: recordingState.recording ? '#34d399' : '#f59e0b' }}>
+              {recordingState.recording ? 'active' : 'idle'}
+            </strong>
+          </p>
+          <p>Analysis: {analysisState.status}</p>
+          <p style={{ color: '#9eb0d1', wordBreak: 'break-all', marginBottom: 0 }}>
+            {recordingState.path || 'No active session file'}
+          </p>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: 16 }}>
+        <div style={card}>
+          <h2 style={{ marginTop: 0 }}>Diagnostics</h2>
+          <p style={{ color: '#9eb0d1', marginTop: 0 }}>
+            Lower-priority raw telemetry for debugging and backend verification.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+            <div
+              style={{
+                background: '#0b1220',
+                border: '1px solid rgba(158,176,209,0.14)',
+                borderRadius: 12,
+                padding: 12,
+              }}
+            >
+              <h3 style={{ marginTop: 0 }}>Band powers (raw)</h3>
+              {Object.keys(bandPowers).length === 0 ? (
+                <p>No band-power data yet</p>
+              ) : (
+                <div>
+                  {Object.entries(bandPowers).map(([channel, bands]) => (
+                    <div key={channel} style={{ marginBottom: 12 }}>
+                      <strong>{getChannelLabel(channel, channelNames)}</strong>
+                      <ul style={{ paddingLeft: 16, marginTop: 4 }}>
+                        {Object.entries(bands).map(([name, value]) => (
+                          <li key={name}>{name}: {Number(value).toFixed(3)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div
+              style={{
+                background: '#0b1220',
+                border: '1px solid rgba(158,176,209,0.14)',
+                borderRadius: 12,
+                padding: 12,
+              }}
+            >
+              <h3 style={{ marginTop: 0 }}>Bandpower debug</h3>
+              {Object.keys(bandDebug).length === 0 ? (
+                <p>No debug data yet</p>
+              ) : (
+                <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: 0 }}>
+                  {JSON.stringify(bandDebug, null, 2)}
+                </pre>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -772,13 +985,133 @@ function App() {
         </div>
       </section>
 
+      <section style={{ marginBottom: 16 }}>
+        <div style={card}>
+          <h2 style={{ marginTop: 0 }}>Latest session review</h2>
+          <p style={{ color: '#9eb0d1', marginTop: 0 }}>
+            Review the most recent analyzed session without leaving the live console.
+          </p>
+
+          {analysisState.summary ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  background: '#0b1220',
+                  border: '1px solid rgba(158,176,209,0.14)',
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>Summary</h3>
+                <p>Samples: {analysisState.summary.samples || 'n/a'}</p>
+                <p>Duration (s): {analysisState.summary.duration_s || 'n/a'}</p>
+                <p>Primary channel: {analysisState.summary.primary_channel || 'n/a'}</p>
+                <p style={{ marginBottom: 0 }}>
+                  Alpha / (alpha + beta): {analysisState.summary.alpha_over_alpha_beta || 'n/a'}
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background: '#0b1220',
+                  border: '1px solid rgba(158,176,209,0.14)',
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>Band means</h3>
+                <p>Mean alpha: {analysisState.summary.mean_alpha || 'n/a'}</p>
+                <p>Mean beta: {analysisState.summary.mean_beta || 'n/a'}</p>
+                <p style={{ color: '#9eb0d1', marginBottom: 0 }}>
+                  Values come from the analyzer summary CSV for the latest completed session.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background: '#0b1220',
+                  border: '1px solid rgba(158,176,209,0.14)',
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>Artifacts</h3>
+
+                {analysisState.bandsPng ? (
+                  <p>
+                    <a
+                      href={`http://localhost:8008/api/sessions/artifacts/${analysisState.bandsPng.split('/').pop()}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open band chart PNG
+                    </a>
+                  </p>
+                ) : (
+                  <p>No band chart artifact yet</p>
+                )}
+
+                {analysisState.summaryCsv ? (
+                  <p>
+                    <a
+                      href={`http://localhost:8008/api/sessions/artifacts/${analysisState.summaryCsv.split('/').pop()}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Download summary CSV
+                    </a>
+                  </p>
+                ) : (
+                  <p>No summary CSV yet</p>
+                )}
+
+                {analysisState.timeseriesCsv ? (
+                  <p style={{ marginBottom: 0 }}>
+                    <a
+                      href={`http://localhost:8008/api/sessions/artifacts/${analysisState.timeseriesCsv.split('/').pop()}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Download time series CSV
+                    </a>
+                  </p>
+                ) : (
+                  <p style={{ marginBottom: 0 }}>No time series CSV yet</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                background: '#0b1220',
+                border: '1px solid rgba(158,176,209,0.14)',
+                borderRadius: 12,
+                padding: 12,
+                color: '#9eb0d1',
+              }}
+            >
+              Analyze a recorded session to populate review stats and artifact links here.
+            </div>
+          )}
+        </div>
+      </section>
+
       <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
         <div style={card}>
-          <h2>Discovered Muse devices</h2>
+          <h2>Telemetry</h2>
+          <p style={{ color: '#9eb0d1', marginTop: 0 }}>
+            Secondary transport and sensor inspection for development, validation, and troubleshooting.
+          </p>
           <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(devices, null, 2)}</pre>
         </div>
         <div style={card}>
-          <h2>Recent events</h2>
+          <h3>Recent events</h3>
           <ul>
             {events.map((e) => <li key={e}>{e}</li>)}
           </ul>
@@ -794,14 +1127,15 @@ function App() {
         }}
       >
         <div style={card}>
-          <h2>Latest optical frame</h2>
+          <h3>Latest optical frame</h3>
           <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(latest.optical, null, 2)}</pre>
         </div>
         <div style={card}>
-          <h2>Latest IMU frame</h2>
+          <h3>Latest IMU frame</h3>
           <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(latest.imu, null, 2)}</pre>
         </div>
       </section>
+      
     </main>
   )
 }
