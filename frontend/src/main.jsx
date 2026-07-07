@@ -425,6 +425,8 @@ function App() {
   const [bandHistory, setBandHistory] = useState([])
   const [recordingState, setRecordingState] = useState({ recording: false, path: '' })
   const [analysisState, setAnalysisState] = useState({ status: 'idle', summary: null, error: '', bandsPng: '', summaryCsv: '', timeseriesCsv: '' })
+  const [sessionHistory, setSessionHistory] = useState([])
+  const [sessionHistoryStatus, setSessionHistoryStatus] = useState('idle')
   const [selectedBand, setSelectedBand] = useState('alpha')
   const wsRef = useRef(null)
   const apiBase = useMemo(() => 'http://localhost:8008/api', [])
@@ -529,6 +531,24 @@ function App() {
     }
   }
 
+  async function loadSessionHistory() {
+    try {
+      setSessionHistoryStatus('loading')
+      const r = await fetch(`${apiBase}/sessions/history/list`)
+      const data = await r.json()
+      if (data.status !== 'ok') {
+        throw new Error(data.stderr || data.detail || 'Failed to load session history')
+      }
+      setSessionHistory(Array.isArray(data.sessions) ? data.sessions : [])
+      setSessionHistoryStatus('ok')
+    } catch (error) {
+      console.error('Failed to load session history', error)
+      setSessionHistory([])
+      setSessionHistoryStatus('error')
+      pushEvent('session history load failed')
+    }
+  }
+
   async function startRecording() {
     try {
       const r = await fetch(`${apiBase}/stream/recording/start`, { method: 'POST' })
@@ -586,6 +606,7 @@ function App() {
       })
       pushEvent('session analysis complete')
       await fetchRecordingState()
+      await loadSessionHistory()
     } catch (error) {
       console.error('Failed to analyze latest session', error)
       setAnalysisState({
@@ -603,6 +624,7 @@ function App() {
   useEffect(() => {
     refreshStatus().catch(() => {})
     fetchRecordingState().catch(() => {})
+    loadSessionHistory().catch(() => {})
     const ws = new WebSocket('ws://localhost:8008/api/stream/ws')
     wsRef.current = ws
     ws.onmessage = (event) => {
@@ -1097,6 +1119,95 @@ function App() {
               }}
             >
               Analyze a recorded session to populate review stats and artifact links here.
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section style={{ marginBottom: 16 }}>
+        <div style={card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <h2 style={{ marginTop: 0, marginBottom: 8 }}>Session history</h2>
+              <p style={{ color: '#9eb0d1', marginTop: 0, marginBottom: 0 }}>
+                Recorded sessions with analysis status and artifact access.
+              </p>
+            </div>
+            <button onClick={loadSessionHistory}>Refresh history</button>
+          </div>
+
+          {sessionHistoryStatus === 'loading' && <p>Loading session history…</p>}
+          {sessionHistoryStatus === 'error' && (
+            <p style={{ color: '#f87171' }}>Could not load session history.</p>
+          )}
+
+          {sessionHistoryStatus !== 'loading' && sessionHistory.length === 0 ? (
+            <p style={{ color: '#9eb0d1' }}>No recorded sessions found yet.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+              {sessionHistory.map((session) => (
+                <div
+                  key={session.session_name}
+                  style={{
+                    background: '#0b1220',
+                    border: '1px solid rgba(158,176,209,0.14)',
+                    borderRadius: 12,
+                    padding: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ color: '#e8eefc', fontWeight: 700 }}>{session.session_name}</div>
+                      <div style={{ color: '#9eb0d1', fontSize: 12 }}>{session.timestamp}</div>
+                    </div>
+                    <div
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 999,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        background: session.analyzed ? 'rgba(52,211,153,0.12)' : 'rgba(245,158,11,0.12)',
+                        border: session.analyzed ? '1px solid rgba(52,211,153,0.35)' : '1px solid rgba(245,158,11,0.35)',
+                        color: session.analyzed ? '#86efac' : '#fcd34d',
+                      }}
+                    >
+                      {session.analyzed ? 'Analyzed' : 'Recorded only'}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
+                    {session.bands_png ? (
+                      <a
+                        href={`http://localhost:8008/api/sessions/artifacts/${session.bands_png.split('/').pop()}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Band chart
+                      </a>
+                    ) : null}
+
+                    {session.summary_csv ? (
+                      <a
+                        href={`http://localhost:8008/api/sessions/artifacts/${session.summary_csv.split('/').pop()}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Summary CSV
+                      </a>
+                    ) : null}
+
+                    {session.timeseries_csv ? (
+                      <a
+                        href={`http://localhost:8008/api/sessions/artifacts/${session.timeseries_csv.split('/').pop()}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Time series CSV
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

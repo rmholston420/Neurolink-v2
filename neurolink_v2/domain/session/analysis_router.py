@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from datetime import datetime
 import subprocess
 import sys
 from pathlib import Path
@@ -83,6 +84,44 @@ async def analyze_latest_session():
         "summary_csv": summary_csv,
         "bands_png": bands_png,
         "summary": summary,
+    }
+
+
+
+@router.get("/history/list")
+async def list_session_history():
+    repo_root = Path.home() / "Neurolink-v2"
+    session_dir = repo_root / "data" / "sessions"
+    output_dir = repo_root / "output"
+
+    rows = []
+    for session_path in sorted(session_dir.glob("session-*.jsonl"), reverse=True):
+        stem = session_path.stem
+        summary_csv = output_dir / f"{stem}-summary.csv"
+        timeseries_csv = output_dir / f"{stem}-band-timeseries.csv"
+        bands_png = output_dir / f"{stem}-bands.png"
+
+        timestamp = stem.removeprefix("session-")
+        display_time = timestamp
+        try:
+            parsed = datetime.strptime(timestamp, "%Y%m%d-%H%M%S")
+            display_time = parsed.isoformat()
+        except ValueError:
+            pass
+
+        rows.append({
+            "session_file": str(session_path),
+            "session_name": session_path.name,
+            "timestamp": display_time,
+            "analyzed": summary_csv.exists() and timeseries_csv.exists() and bands_png.exists(),
+            "summary_csv": str(summary_csv.relative_to(repo_root)) if summary_csv.exists() else None,
+            "timeseries_csv": str(timeseries_csv.relative_to(repo_root)) if timeseries_csv.exists() else None,
+            "bands_png": str(bands_png.relative_to(repo_root)) if bands_png.exists() else None,
+        })
+
+    return {
+        "status": "ok",
+        "sessions": rows,
     }
 
 
