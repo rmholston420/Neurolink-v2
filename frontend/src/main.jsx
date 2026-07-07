@@ -1433,6 +1433,11 @@ function App() {
                       <div>
                         EEG packets: {session.recording_metadata.eeg_packets ?? 'n/a'}
                       </div>
+                      {session.recording_metadata.recording_metadata_source === 'fallback' ? (
+                        <div style={{ marginTop: 4, color: '#9eb0d1', fontSize: 12 }}>
+                          Metadata source: heuristic fallback
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
 
