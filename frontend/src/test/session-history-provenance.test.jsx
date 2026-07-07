@@ -8,13 +8,6 @@ const okJson = (data) => ({
 })
 
 describe('Session history provenance rendering', () => {
-  const originalFetch = global.fetch
-
-  afterEach(() => {
-    global.fetch = originalFetch
-    vi.clearAllMocks()
-  })
-
   it('shows heuristic metadata hints only for fallback-derived session metadata', async () => {
     global.fetch = vi.fn(async (input) => {
       const raw = typeof input === 'string' ? input : (input?.url ?? String(input))
