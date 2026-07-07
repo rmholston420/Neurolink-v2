@@ -69,6 +69,14 @@ function clamp01(value) {
 }
 
 
+
+function getSignalGuidanceHint(summary) {
+  if (summary?.guidance_hint && String(summary.guidance_hint).trim()) {
+    return summary.guidance_hint;
+  }
+  return "Mixed spectral profile; focus on comfort, breathing, and headset seating.";
+}
+
 function getChannelLabel(channelKey, channelNames = []) {
   const key = String(channelKey ?? '')
   const numeric = Number(key)
@@ -98,7 +106,13 @@ function formatQualityLabel(status) {
 }
 
 function OperatorChannelCard({ channelKey, channelNames, bands, quality }) {
-  const label = getChannelLabel(channelKey, channelNames)
+  const numericKey = Number(channelKey)
+  const label =
+    Number.isInteger(numericKey)
+      ? (numericKey > 0 ? channelNames?.[numericKey - 1] : undefined) ??
+        channelNames?.[numericKey] ??
+        `Channel ${channelKey}`
+      : channelNames?.[channelKey] ?? `Channel ${channelKey}`
   const qualityStatus = quality?.status || 'unknown'
   const qualityReason = quality?.reason || 'No classification yet'
   const qualityGuidance = quality?.guidance || ''
@@ -427,7 +441,10 @@ function App() {
   const [analysisState, setAnalysisState] = useState({ status: 'idle', summary: null, error: '', bandsPng: '', summaryCsv: '', timeseriesCsv: '' })
   const [sessionHistory, setSessionHistory] = useState([])
   const [sessionHistoryStatus, setSessionHistoryStatus] = useState('idle')
+  const [selectedSessionName, setSelectedSessionName] = useState('')
+  const [selectedSessionSummary, setSelectedSessionSummary] = useState(null)
   const [selectedBand, setSelectedBand] = useState('alpha')
+  const reviewSummary = selectedSessionSummary || analysisState.summary || {}
   const wsRef = useRef(null)
   const apiBase = useMemo(() => 'http://localhost:8008/api', [])
 
@@ -445,6 +462,52 @@ function App() {
     () => latest.eeg?.band_quality || {},
     [latest]
   )
+
+  const formatPrimaryChannel = (value) => {
+    const numeric = Number(value)
+    if (!Number.isInteger(numeric)) return value || 'n/a'
+    return (
+      (numeric > 0 ? channelNames?.[numeric - 1] : undefined) ??
+      channelNames?.[numeric] ??
+      value ??
+      'n/a'
+    )
+  }
+
+  const latestSessionSignalNote = useMemo(() => {
+    const summary = analysisState.summary
+    if (!summary) return null
+
+    const alphaRatio = Number(summary.alpha_over_alpha_beta)
+    const fastRatio = Number(summary.fast_over_total)
+    const slowRatio = Number(summary.slow_over_total)
+
+    if (Number.isFinite(fastRatio) && fastRatio >= 0.4) {
+      return {
+        title: 'Fast-band heavy',
+        body: 'This session leans toward elevated beta/gamma activity, which can reflect muscle tension or movement during the recording.',
+      }
+    }
+
+    if (Number.isFinite(alphaRatio) && alphaRatio >= 0.55) {
+      return {
+        title: 'Alpha-forward',
+        body: 'This session shows relatively strong alpha compared with beta, which is often more consistent with calm, usable resting EEG.',
+      }
+    }
+
+    if (Number.isFinite(slowRatio) && slowRatio >= 0.5) {
+      return {
+        title: 'Slow-band heavy',
+        body: 'This session is weighted toward delta/theta activity, which can reflect drowsiness, eyes-closed relaxation, or low-arousal periods.',
+      }
+    }
+
+    return {
+      title: 'Mixed spectral profile',
+      body: 'This session shows a mixed band distribution without one dominant pattern across the summary ratios.',
+    }
+  }, [analysisState.summary])
 
 
 
@@ -579,8 +642,86 @@ function App() {
     }
   }
 
+  async function analyzeSessionByName(sessionName) {
+    if (selectedSessionName === sessionName && analysisState.status === 'loading') {
+      return
+    }
+    setSelectedSessionName(sessionName)
+  setSelectedSessionSummary(null)
+    setAnalysisState({
+      status: 'loading',
+      summary: null,
+      error: '',
+      bandsPng: '',
+      summaryCsv: '',
+      timeseriesCsv: '',
+    })
+    try {
+      const r = await fetch(`${apiBase}/sessions/analyze-by-name/${encodeURIComponent(sessionName)}`, {
+        method: 'POST',
+      })
+      const data = await r.json()
+      if (data.status !== 'ok') {
+        setAnalysisState({
+          status: 'error',
+          summary: null,
+          error: data.stderr || 'Analysis failed',
+          bandsPng: '',
+          summaryCsv: '',
+          timeseriesCsv: '',
+        })
+        pushEvent(`analysis failed for ${sessionName}`)
+        return
+      }
+
+      setSelectedSessionSummary(data.summary || null)
+      setAnalysisState({
+        status: 'ok',
+        summary: data.summary || null,
+        error: '',
+        bandsPng: data.bands_png || '',
+        summaryCsv: data.summary_csv || '',
+        timeseriesCsv: data.timeseries_csv || '',
+      })
+      pushEvent(`analysis complete for ${sessionName}`)
+      await fetchRecordingState()
+      await loadSessionHistory()
+    } catch (error) {
+      console.error('Failed to analyze session by name', error)
+      setAnalysisState({
+        status: 'error',
+        summary: null,
+        error: String(error),
+        bandsPng: '',
+        summaryCsv: '',
+        timeseriesCsv: '',
+      })
+      pushEvent(`analysis failed for ${sessionName}`)
+    }
+  }
+
+  function viewSession(session) {
+    setSelectedSessionName(session.session_name)
+    setSelectedSessionSummary(session.summary || null)
+    setAnalysisState((prev) => ({
+      ...prev,
+      status: session.summary ? 'ok' : prev.status,
+      summary: session.summary || prev.summary,
+      bandsPng: session.bands_png || prev.bandsPng || '',
+      summaryCsv: session.summary_csv || prev.summaryCsv || '',
+      timeseriesCsv: session.timeseries_csv || prev.timeseriesCsv || '',
+    }))
+  }
+
   async function analyzeLatestSession() {
-    setAnalysisState({ status: 'loading', summary: null, error: '' })
+    setAnalysisState({
+      status: 'loading',
+      summary: null,
+      error: '',
+      bandsPng: '',
+      summaryCsv: '',
+      timeseriesCsv: '',
+    })
     try {
       const r = await fetch(`${apiBase}/sessions/analyze-latest`, { method: 'POST' })
       const data = await r.json()
@@ -986,7 +1127,7 @@ function App() {
             >
               <h3 style={{ marginTop: 0 }}>Latest analysis summary</h3>
               <p>Samples: {analysisState.summary.samples}</p>
-              <p>Primary channel: {analysisState.summary.primary_channel || 'n/a'}</p>
+              <p>Primary channel: {formatPrimaryChannel(analysisState.summary.primary_channel)}</p>
               <p>Duration (s): {analysisState.summary.duration_s}</p>
               <p>Mean alpha: {analysisState.summary.mean_alpha}</p>
               <p>Mean beta: {analysisState.summary.mean_beta}</p>
@@ -1010,11 +1151,14 @@ function App() {
       <section style={{ marginBottom: 16 }}>
         <div style={card}>
           <h2 style={{ marginTop: 0 }}>Latest session review</h2>
-          <p style={{ color: '#9eb0d1', marginTop: 0 }}>
+          <p style={{ color: '#9eb0d1', marginTop: 0, marginBottom: 6 }}>
             Review the most recent analyzed session without leaving the live console.
           </p>
+          <p style={{ color: '#cbd5e1', marginTop: 0 }}>
+            Reviewing: {selectedSessionName || 'latest analyzed session'}
+          </p>
 
-          {analysisState.summary ? (
+          {Object.keys(reviewSummary).length > 0 ? (
             <div
               style={{
                 display: 'grid',
@@ -1031,11 +1175,11 @@ function App() {
                 }}
               >
                 <h3 style={{ marginTop: 0 }}>Summary</h3>
-                <p>Samples: {analysisState.summary.samples || 'n/a'}</p>
-                <p>Duration (s): {analysisState.summary.duration_s || 'n/a'}</p>
-                <p>Primary channel: {analysisState.summary.primary_channel || 'n/a'}</p>
+                <p>Samples: {reviewSummary.samples || 'n/a'}</p>
+                <p>Duration (s): {reviewSummary.duration_s || 'n/a'}</p>
+                <p>Primary channel: {formatPrimaryChannel(reviewSummary.primary_channel)}</p>
                 <p style={{ marginBottom: 0 }}>
-                  Alpha / (alpha + beta): {analysisState.summary.alpha_over_alpha_beta || 'n/a'}
+                  Alpha / (alpha + beta): {reviewSummary.alpha_over_alpha_beta || 'n/a'}
                 </p>
               </div>
 
@@ -1048,10 +1192,27 @@ function App() {
                 }}
               >
                 <h3 style={{ marginTop: 0 }}>Band means</h3>
-                <p>Mean alpha: {analysisState.summary.mean_alpha || 'n/a'}</p>
-                <p>Mean beta: {analysisState.summary.mean_beta || 'n/a'}</p>
+                <p>Mean alpha: {reviewSummary.mean_alpha || 'n/a'}</p>
+                <p>Mean beta: {reviewSummary.mean_beta || 'n/a'}</p>
                 <p style={{ color: '#9eb0d1', marginBottom: 0 }}>
                   Values come from the analyzer summary CSV for the latest completed session.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background: '#0b1220',
+                  border: '1px solid rgba(158,176,209,0.14)',
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>Signal note</h3>
+                <p style={{ marginTop: 8, color: "#555" }}>{getSignalGuidanceHint(reviewSummary)}</p>
+                <p style={{ color: '#9eb0d1', marginBottom: 0 }}>
+                  {getSignalGuidanceHint(reviewSummary) ||
+                  latestSessionSignalNote?.body ||
+                  'Run a session analysis to generate a quick interpretation.'}
                 </p>
               </div>
 
@@ -1149,8 +1310,8 @@ function App() {
                 <div
                   key={session.session_name}
                   style={{
-                    background: '#0b1220',
-                    border: '1px solid rgba(158,176,209,0.14)',
+                    background: selectedSessionName === session.session_name ? 'rgba(30,41,59,0.95)' : '#0b1220',
+                    border: selectedSessionName === session.session_name ? '1px solid rgba(96,165,250,0.7)' : '1px solid rgba(158,176,209,0.14)',
                     borderRadius: 12,
                     padding: 12,
                   }}
@@ -1160,22 +1321,85 @@ function App() {
                       <div style={{ color: '#e8eefc', fontWeight: 700 }}>{session.session_name}</div>
                       <div style={{ color: '#9eb0d1', fontSize: 12 }}>{session.timestamp}</div>
                     </div>
-                    <div
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: 999,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        background: session.analyzed ? 'rgba(52,211,153,0.12)' : 'rgba(245,158,11,0.12)',
-                        border: session.analyzed ? '1px solid rgba(52,211,153,0.35)' : '1px solid rgba(245,158,11,0.35)',
-                        color: session.analyzed ? '#86efac' : '#fcd34d',
-                      }}
-                    >
-                      {session.analyzed ? 'Analyzed' : 'Recorded only'}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <div
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 999,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          background: session.analyzed ? 'rgba(52,211,153,0.12)' : 'rgba(245,158,11,0.12)',
+                          border: session.analyzed ? '1px solid rgba(52,211,153,0.35)' : '1px solid rgba(245,158,11,0.35)',
+                          color: session.analyzed ? '#86efac' : '#fcd34d',
+                        }}
+                      >
+                        {session.analyzed ? 'Analyzed' : 'Recorded only'}
+                      </div>
+                      {session.recording_label === 'short' ? (
+                        <div
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            background: 'rgba(248,113,113,0.12)',
+                            border: '1px solid rgba(248,113,113,0.35)',
+                            color: '#fca5a5',
+                          }}
+                        >
+                          Short recording
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
+                  {session.summary ? (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 10,
+                        borderRadius: 10,
+                        background: 'rgba(158,176,209,0.08)',
+                        border: '1px solid rgba(158,176,209,0.12)',
+                        color: '#cbd5e1',
+                        fontSize: 13,
+                      }}
+                    >
+                      <div>
+                        Primary: {formatPrimaryChannel(session.summary.primary_channel)}
+                      </div>
+                      <div>
+                        Alpha/(alpha+beta): {session.summary.alpha_over_alpha_beta ?? 'n/a'} · Fast/total: {session.summary.fast_over_total ?? 'n/a'} · Slow/total: {session.summary.slow_over_total ?? 'n/a'}
+                      </div>
+                      {session.summary.guidance_hint ? (
+                        <div style={{ color: '#9eb0d1', marginTop: 4 }}>
+                          Note: {session.summary.guidance_hint}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
+                    {session.analyzed ? (
+                      <>
+                        <button
+                          onClick={() => viewSession(session)}
+                          disabled={selectedSessionName === session.session_name}
+                        >
+                          {selectedSessionName === session.session_name ? 'Viewing' : 'View'}
+                        </button>
+                        <button
+                          onClick={() => analyzeSessionByName(session.session_name)}
+                          disabled={selectedSessionName === session.session_name && analysisState.status === 'loading'}
+                        >
+                          {selectedSessionName === session.session_name && analysisState.status === 'loading' ? 'Reanalyzing…' : 'Reanalyze'}
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => analyzeSessionByName(session.session_name)}>
+                        Analyze
+                      </button>
+                    )}
                     {session.bands_png ? (
                       <a
                         href={`http://localhost:8008/api/sessions/artifacts/${session.bands_png.split('/').pop()}`}
