@@ -1398,6 +1398,9 @@ export function App() {
                 }}
               >
                 <h3 style={{ marginTop: 0 }}>Signal note</h3>
+                <p style={{ color: '#9eb0d1', fontSize: 12, marginTop: 4, marginBottom: 6 }}>
+                  {latestSessionSignalNote?.title || 'Spectral summary'}
+                </p>
                 <p style={{ color: '#cbd5e1', marginBottom: reviewSummary.short_session ? 10 : 0 }}>
                   {getSignalGuidanceHint(reviewSummary) ||
                   latestSessionSignalNote?.body ||
@@ -1658,35 +1661,52 @@ export function App() {
                         Analyze
                       </button>
                     )}
-                    {session.bands_png ? (
-                      <a
-                        href={`http://localhost:8008/api/sessions/artifacts/${session.bands_png.split('/').pop()}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Band chart
-                      </a>
-                    ) : null}
 
-                    {session.summary_csv ? (
-                      <a
-                        href={`http://localhost:8008/api/sessions/artifacts/${session.summary_csv.split('/').pop()}`}
-                        target="_blank"
-                        rel="noreferrer"
+                    {(session.bands_png || session.summary_csv || session.timeseries_csv) && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                        }}
                       >
-                        Summary CSV
-                      </a>
-                    ) : null}
+                        <span style={{ color: '#9eb0d1', fontSize: 12 }}>Artifacts:</span>
 
-                    {session.timeseries_csv ? (
-                      <a
-                        href={`http://localhost:8008/api/sessions/artifacts/${session.timeseries_csv.split('/').pop()}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Time series CSV
-                      </a>
-                    ) : null}
+                        {session.bands_png && (
+                          <a
+                            href={`http://localhost:8008/api/sessions/artifacts/${session.bands_png.split('/').pop()}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={detailChipBase}
+                          >
+                            Band chart
+                          </a>
+                        )}
+
+                        {session.summary_csv && (
+                          <a
+                            href={`http://localhost:8008/api/sessions/artifacts/${session.summary_csv.split('/').pop()}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={detailChipBase}
+                          >
+                            Summary CSV
+                          </a>
+                        )}
+
+                        {session.timeseries_csv && (
+                          <a
+                            href={`http://localhost:8008/api/sessions/artifacts/${session.timeseries_csv.split('/').pop()}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={detailChipBase}
+                          >
+                            Time series CSV
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
