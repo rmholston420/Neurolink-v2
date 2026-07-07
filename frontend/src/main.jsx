@@ -8,6 +8,19 @@ const card = {
   boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
 }
 
+const detailChipBase = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '5px 9px',
+  borderRadius: 999,
+  fontSize: 12,
+  lineHeight: 1.2,
+  color: '#cbd5e1',
+  background: 'rgba(148,163,184,0.12)',
+  border: '1px solid rgba(148,163,184,0.22)',
+}
+
 const BAND_COLORS = {
   delta: '#7dd3fc',
   theta: '#a78bfa',
@@ -1568,21 +1581,28 @@ export function App() {
                         borderRadius: 10,
                         background: 'rgba(59,130,246,0.08)',
                         border: '1px solid rgba(96,165,250,0.16)',
-                        color: '#cbd5e1',
-                        fontSize: 13,
                       }}
                     >
-                      <div>
-                        Duration (s): {session.recording_metadata.duration_seconds ?? 'n/a'}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        <span style={detailChipBase}>
+                          Duration: {session.recording_metadata.duration_seconds ?? 'n/a'} s
+                        </span>
+                        <span style={detailChipBase}>
+                          EEG packets: {session.recording_metadata.eeg_packets ?? 'n/a'}
+                        </span>
+                        {session.recording_metadata.recording_metadata_source === 'fallback' ? (
+                          <span
+                            style={{
+                              ...detailChipBase,
+                              background: 'rgba(148,163,184,0.14)',
+                              border: '1px solid rgba(148,163,184,0.28)',
+                            }}
+                            title="Session metadata reconstructed heuristically from legacy session data"
+                          >
+                            Metadata: heuristic fallback
+                          </span>
+                        ) : null}
                       </div>
-                      <div>
-                        EEG packets: {session.recording_metadata.eeg_packets ?? 'n/a'}
-                      </div>
-                      {session.recording_metadata.recording_metadata_source === 'fallback' ? (
-                        <div style={{ marginTop: 4, color: '#9eb0d1', fontSize: 12 }}>
-                          Metadata source: heuristic fallback
-                        </div>
-                      ) : null}
                     </div>
                   ) : null}
 
@@ -1594,18 +1614,24 @@ export function App() {
                         borderRadius: 10,
                         background: 'rgba(158,176,209,0.08)',
                         border: '1px solid rgba(158,176,209,0.12)',
-                        color: '#cbd5e1',
-                        fontSize: 13,
                       }}
                     >
-                      <div>
-                        Primary: {formatPrimaryChannel(session.summary.primary_channel)}
-                      </div>
-                      <div>
-                        Alpha/(alpha+beta): {session.summary.alpha_over_alpha_beta ?? 'n/a'} · Fast/total: {session.summary.fast_over_total ?? 'n/a'} · Slow/total: {session.summary.slow_over_total ?? 'n/a'}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        <span style={detailChipBase}>
+                          Primary: {formatPrimaryChannel(session.summary.primary_channel)}
+                        </span>
+                        <span style={detailChipBase}>
+                          Alpha/(alpha+beta): {session.summary.alpha_over_alpha_beta ?? 'n/a'}
+                        </span>
+                        <span style={detailChipBase}>
+                          Fast/total: {session.summary.fast_over_total ?? 'n/a'}
+                        </span>
+                        <span style={detailChipBase}>
+                          Slow/total: {session.summary.slow_over_total ?? 'n/a'}
+                        </span>
                       </div>
                       {session.summary.guidance_hint ? (
-                        <div style={{ color: '#9eb0d1', marginTop: 4 }}>
+                        <div style={{ color: '#9eb0d1', marginTop: 8, fontSize: 12 }}>
                           Note: {session.summary.guidance_hint}
                         </div>
                       ) : null}

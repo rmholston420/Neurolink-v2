@@ -179,7 +179,7 @@ describe('Session history provenance rendering', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Metadata: heuristic')).toBeInTheDocument()
-      expect(screen.getByText('Metadata source: heuristic fallback')).toBeInTheDocument()
+      expect(screen.getByText('Metadata: heuristic fallback')).toBeInTheDocument()
     })
 
     const fallbackSessionBlock = fallbackTitle.closest('div')?.parentElement?.parentElement
@@ -192,7 +192,7 @@ describe('Session history provenance rendering', () => {
     expect(fallbackSessionBlock).toHaveTextContent('Short recording')
     expect(manifestSessionBlock).not.toHaveTextContent('Metadata: heuristic')
 
-    expect(screen.getByText('Metadata source: heuristic fallback')).toBeInTheDocument()
-    expect(screen.queryAllByText('Metadata source: heuristic fallback')).toHaveLength(1)
+    expect(screen.getByText('Metadata: heuristic fallback')).toBeInTheDocument()
+    expect(screen.queryAllByText('Metadata: heuristic fallback')).toHaveLength(1)
   })
 })
