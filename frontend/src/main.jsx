@@ -1101,6 +1101,151 @@ export function App() {
       </section>
 
       <section style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            ...card,
+            padding: 12,
+            background: 'linear-gradient(180deg, rgba(15,23,42,0.96), rgba(11,18,32,0.96))',
+            border: '1px solid rgba(96,165,250,0.22)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <h2 style={{ marginTop: 0, marginBottom: 6 }}>Live status</h2>
+              <p style={{ color: '#9eb0d1', margin: 0 }}>
+                Fast operator summary for connection, recording, review target, and signal interpretation state.
+              </p>
+            </div>
+            <div
+              style={{
+                padding: '6px 10px',
+                borderRadius: 999,
+                fontSize: 12,
+                fontWeight: 700,
+                color: deviceStatus?.has_board ? '#86efac' : '#fcd34d',
+                background: deviceStatus?.has_board ? 'rgba(52,211,153,0.12)' : 'rgba(245,158,11,0.12)',
+                border: deviceStatus?.has_board ? '1px solid rgba(52,211,153,0.35)' : '1px solid rgba(245,158,11,0.35)',
+              }}
+            >
+              {deviceStatus?.has_board ? 'Headset connected' : 'Headset disconnected'}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 10,
+              marginTop: 12,
+            }}
+          >
+            <div
+              style={{
+                background: 'rgba(15,23,42,0.72)',
+                border: '1px solid rgba(158,176,209,0.14)',
+                borderRadius: 10,
+                padding: 10,
+              }}
+            >
+              <div style={{ color: '#9eb0d1', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Recording</div>
+              <div style={{ color: recordingState.recording ? '#86efac' : '#fcd34d', fontWeight: 700, marginTop: 6 }}>
+                {recordingState.recording ? 'Recording in progress' : 'Idle'}
+              </div>
+              <div style={{ color: '#9eb0d1', fontSize: 13, marginTop: 6, wordBreak: 'break-word' }}>
+                {recordingState.path || 'No active session file'}
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(15,23,42,0.72)',
+                border: '1px solid rgba(158,176,209,0.14)',
+                borderRadius: 10,
+                padding: 10,
+              }}
+            >
+              <div style={{ color: '#9eb0d1', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Review target</div>
+              <div style={{ color: '#e8eefc', fontWeight: 700, marginTop: 6 }}>
+                {selectedSessionName || 'Latest analyzed session'}
+              </div>
+              <div style={{ color: '#9eb0d1', fontSize: 13, marginTop: 6 }}>
+                {Object.keys(reviewSummary).length > 0 ? 'Review cards populated' : 'No review summary loaded yet'}
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(15,23,42,0.72)',
+                border: reviewSummary.short_session
+                  ? '1px solid rgba(245,158,11,0.35)'
+                  : '1px solid rgba(158,176,209,0.14)',
+                borderRadius: 10,
+                padding: 10,
+              }}
+            >
+              <div style={{ color: '#9eb0d1', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Signal interpretation</div>
+              <div
+                style={{
+                  color: reviewSummary.short_session ? '#fbbf24' : '#e8eefc',
+                  fontWeight: 700,
+                  marginTop: 6,
+                }}
+              >
+                {reviewSummary.short_session ? 'Lower-confidence short recording' : (getSignalGuidanceHint(reviewSummary) || 'No active interpretation')}
+              </div>
+              <div style={{ color: '#9eb0d1', fontSize: 13, marginTop: 6 }}>
+                {reviewSummary.short_session_caution ||
+                  latestSessionSignalNote?.body ||
+                  'Run or view an analysis to populate the interpretation state.'}
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(15,23,42,0.72)',
+                border: analysisState.status === 'error'
+                  ? '1px solid rgba(248,113,113,0.35)'
+                  : '1px solid rgba(158,176,209,0.14)',
+                borderRadius: 10,
+                padding: 10,
+              }}
+            >
+              <div style={{ color: '#9eb0d1', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Analysis</div>
+              <div
+                style={{
+                  color:
+                    analysisState.status === 'error'
+                      ? '#fca5a5'
+                      : analysisState.status === 'loading'
+                        ? '#93c5fd'
+                        : analysisState.summary
+                          ? '#86efac'
+                          : '#e8eefc',
+                  fontWeight: 700,
+                  marginTop: 6,
+                }}
+              >
+                {analysisState.status === 'loading'
+                  ? 'Analyzing latest session…'
+                  : analysisState.status === 'error'
+                    ? 'Analysis error'
+                    : analysisState.summary
+                      ? 'Analysis ready'
+                      : 'No analysis loaded'}
+              </div>
+              <div style={{ color: analysisState.status === 'error' ? '#fca5a5' : '#9eb0d1', fontSize: 13, marginTop: 6 }}>
+                {analysisState.status === 'error'
+                  ? analysisState.error
+                  : analysisState.summary
+                    ? 'Artifacts and review cards are available below.'
+                    : 'Run an analysis or select a session to populate review outputs.'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: 16 }}>
         <div style={card}>
           <h2>Session recording</h2>
           <p style={{ color: '#9eb0d1', marginTop: 0 }}>
