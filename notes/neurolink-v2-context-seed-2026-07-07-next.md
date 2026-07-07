@@ -15,6 +15,7 @@ The current baseline is verified and stable:
 
 - Backend tests pass: `pytest -q` → `25 passed`
 - Frontend production build passes: `npm --prefix frontend run build`
+- Frontend UI tests pass: `npm --prefix frontend run test:run`
 - Git state is clean after push
 - Branch state is synced: `main` is up to date with `origin/main`
 - Muse Athena discovery/connect works
@@ -31,6 +32,8 @@ The current baseline is verified and stable:
 - Frontend session cards show a `Short recording` badge when the backend marks a session as short
 - Frontend session history cards now also show `Metadata: heuristic` only for fallback-based legacy metadata
 - Session history recording metadata detail panels now show `Metadata source: heuristic fallback` only for fallback-derived metadata
+- Frontend now has minimal Vitest + Testing Library UI test infrastructure
+- Frontend UI coverage includes a smoke test and a session-history provenance regression test
 - Latest session review shows a caution in the Signal note card when the analyzed session is short
 - Analysis responses include `recording_metadata`
 - `recording_metadata` includes `recording_metadata_source` with values `manifest`, `fallback`, and `unknown`
@@ -39,9 +42,9 @@ The current baseline is verified and stable:
 ## Latest relevant commits
 Latest pushed commits before this handoff:
 
+- `9434d7d` — Add session history provenance UI test
+- `a1fd9cd` — Add minimal frontend UI test infrastructure
 - `e632660` — Refresh tracked handoff note for provenance UI
-- `4856bc5` — Clarify fallback metadata in session history details
-- `789bddb` — Add tracked next-session handoff note
 
 ## Important files
 ### Backend
@@ -55,7 +58,10 @@ Latest pushed commits before this handoff:
 - `tools/analyze_session.py` — post-session artifact generation script
 
 ### Frontend
-- `frontend/src/main.jsx` — operator console, session recording/review UI, live channel label mapping, Signal note card, recording context card, provenance rendering, session-history badges, and fallback metadata detail hints
+- `frontend/src/main.jsx` — operator console, session recording/review UI, live channel label mapping, Signal note card, recording context card, provenance rendering, session-history badges, fallback metadata detail hints, and exportable app entry for UI tests
+- `frontend/vite.config.js` — Vite + Vitest frontend test configuration
+- `frontend/src/test/app.smoke.test.jsx` — frontend smoke test
+- `frontend/src/test/session-history-provenance.test.jsx` — frontend regression test for fallback provenance rendering
 
 ### Tests
 - `tests/test_bandpower.py`
@@ -95,24 +101,25 @@ Latest pushed commits before this handoff:
 10. Use exact, paste-ready shell commands only.
 
 ## Best next objective
-Next slice: add a small regression test or UI-focused safeguard around fallback metadata presentation so the provenance behavior is less likely to drift during future session-history changes.
+Next slice: reduce frontend test noise by making the UI tests deterministic around startup network effects, so Vitest runs do not emit expected `fetch failed` noise during unrelated tests.
 
 ## Why this is the best next slice
-- The frontend provenance story is now complete across review, history badges, and history metadata details.
-- The next highest-value work is preserving that behavior rather than adding more UI text.
-- A narrow safeguard is lower risk than another feature slice and helps keep future refactors honest.
-- This also keeps the project in the current pattern of small, reversible hardening steps.
+- The frontend provenance safeguard is now covered by an actual regression test.
+- The remaining rough edge in the new UI harness is test-run noise from startup fetches during component mount.
+- Cleaning that up is a small, test-focused hardening step that improves future UI test work without changing product behavior.
+- This stays aligned with the current pattern of small, reversible reliability improvements.
 
 ## Exact next-step instructions
-1. Inspect existing frontend test coverage or current project conventions for UI verification.
-2. If lightweight UI testing already exists, add one focused regression test for fallback provenance rendering.
-3. If frontend UI tests do not exist yet, document the provenance expectations in the tracked handoff note and defer test harness work.
-4. Keep the slice small; avoid mixing new backend logic with test/setup work.
+1. Inspect the current frontend test files and setup file.
+2. Inspect where `App` startup effects trigger `fetchRecordingState()` and `loadSessionHistory()`.
+3. Add a small shared fetch mock or setup helper so tests do not fall through to real network calls during mount.
+4. Keep the slice test-only if possible; avoid changing product logic unless needed for testability.
 5. Run:
    ```bash
    cd ~/Neurolink-v2
+   npm --prefix frontend run test:run
    npm --prefix frontend run build
    pytest -q
    git status
    ```
-6. Commit only the focused safeguard or note update.
+6. Commit only the focused test-harness hardening change.
