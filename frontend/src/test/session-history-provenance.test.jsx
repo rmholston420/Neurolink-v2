@@ -68,6 +68,65 @@ describe('Session history provenance rendering', () => {
     })
   })
 
+  it('shows short-session caution in the review Signal note card for a viewed analyzed session', async () => {
+    global.fetch = vi.fn(async (input) => {
+      const raw = typeof input === 'string' ? input : (input?.url ?? String(input))
+      const url = raw.replace(/^https?:\/\/[^/]+/, '')
+
+      if (url.includes('/api/stream/recording')) {
+        return okJson({
+          recording: false,
+          path: null,
+        })
+      }
+
+      if (url.includes('/api/sessions/history/list')) {
+        return okJson({
+          status: 'ok',
+          sessions: [
+            {
+              session_name: 'short-review-session',
+              timestamp: '2026-07-07T01:15:00Z',
+              analyzed: true,
+              recording_label: 'short',
+              recording_metadata: {
+                duration_seconds: 12.3,
+                eeg_packets: 48,
+                recording_metadata_source: 'manifest',
+              },
+              summary: {
+                samples: 48,
+                duration_s: 12.3,
+                primary_channel: 'AF7',
+                alpha_over_alpha_beta: 0.44,
+                recording_label: 'short',
+                short_session: true,
+                short_session_caution: 'Treat this interpretation as lower confidence because the recording is short.',
+              },
+            },
+          ],
+        })
+      }
+
+      return okJson({})
+    })
+
+    render(<App />)
+
+    await screen.findByText('short-review-session')
+
+    const viewButton = await screen.findByRole('button', { name: 'View' })
+    fireEvent.click(viewButton)
+
+    await waitFor(() => {
+      const signalNoteHeading = screen.getByRole('heading', { name: 'Signal note' })
+      const signalNoteCard = signalNoteHeading.parentElement
+
+      expect(signalNoteCard).toBeTruthy()
+      expect(within(signalNoteCard).getByText('Treat this interpretation as lower confidence because the recording is short.')).toBeInTheDocument()
+    })
+  })
+
   it('shows heuristic metadata hints only for fallback-derived session metadata', async () => {
     global.fetch = vi.fn(async (input) => {
       const raw = typeof input === 'string' ? input : (input?.url ?? String(input))
