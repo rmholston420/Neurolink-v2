@@ -16,6 +16,31 @@ _stop_time: float = 0.0
 _packet_counts: Dict[str, int] = {}
 
 
+def _manifest_path_for_session(session_path: Path) -> Path:
+    return session_path.with_suffix(".manifest.json")
+
+
+def _write_session_manifest(session_path: Path) -> None:
+    stats = session_stats()
+    manifest = {
+        "session_file": str(session_path),
+        "session_name": session_path.name,
+        "manifest_version": 1,
+        "start_time": stats.get("start_time"),
+        "stop_time": stats.get("stop_time"),
+        "duration_seconds": stats.get("duration_seconds"),
+        "packet_counts": stats.get("packet_counts", {}),
+        "eeg_packets": stats.get("eeg_packets"),
+        "session_label": stats.get("session_label"),
+        "recording_label": stats.get("session_label"),
+    }
+    manifest_path = _manifest_path_for_session(session_path)
+    try:
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    except Exception:
+        pass
+
+
 def _ensure_open() -> None:
     global _fh, _current_file
     if _fh is not None:
@@ -37,6 +62,7 @@ def start_recording() -> str:
 
 def stop_recording() -> None:
     global _recording_enabled, _fh, _current_file, _stop_time
+    session_path = _current_file
     _recording_enabled = False
     _stop_time = time.time()
     if _fh is not None:
@@ -49,6 +75,8 @@ def stop_recording() -> None:
         except Exception:
             pass
     _fh = None
+    if session_path is not None:
+        _write_session_manifest(session_path)
     _current_file = None
 
 def is_recording() -> bool:

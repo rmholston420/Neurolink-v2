@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from datetime import datetime
 import subprocess
 import sys
@@ -43,7 +44,23 @@ def _harden_summary_ratios(summary: dict) -> dict:
     summary["alpha_over_alpha_beta"] = alpha / alpha_beta if alpha_beta > 0.0 else 0.0
     return summary
 
-def _recording_label_for_session(session_path: Path) -> str:
+
+def _manifest_path_for_session(session_path: Path) -> Path:
+    return session_path.with_suffix(".manifest.json")
+
+
+def _load_session_manifest(session_path: Path) -> dict | None:
+    manifest_path = _manifest_path_for_session(session_path)
+    try:
+        with manifest_path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except Exception:
+        return None
+
+    return data if isinstance(data, dict) else None
+
+
+def _line_count_recording_label_for_session(session_path: Path) -> str:
     try:
         line_count = 0
         with session_path.open("r", encoding="utf-8") as fh:
@@ -55,9 +72,35 @@ def _recording_label_for_session(session_path: Path) -> str:
     return "short" if line_count < 20 else "ok"
 
 
+def _recording_metadata_for_session(session_path: Path | None) -> dict:
+    if session_path is None:
+        return {"recording_label": "unknown"}
+
+    manifest = _load_session_manifest(session_path)
+    if manifest:
+        label = str(
+            manifest.get("recording_label")
+            or manifest.get("session_label")
+            or "unknown"
+        )
+        return {
+            "recording_label": label,
+            "duration_seconds": manifest.get("duration_seconds"),
+            "packet_counts": manifest.get("packet_counts"),
+            "eeg_packets": manifest.get("eeg_packets"),
+            "start_time": manifest.get("start_time"),
+            "stop_time": manifest.get("stop_time"),
+            "manifest_path": str(_manifest_path_for_session(session_path)),
+        }
+
+    return {
+        "recording_label": _line_count_recording_label_for_session(session_path),
+    }
+
 def _inject_short_session_caution(summary: dict, session_path: Path | None) -> dict:
     summary = dict(summary)
-    label = _recording_label_for_session(session_path) if session_path is not None else "unknown"
+    metadata = _recording_metadata_for_session(session_path)
+    label = str(metadata.get("recording_label", "unknown"))
     summary["recording_label"] = label
     summary["short_session"] = label == "short"
     summary["short_session_caution"] = (
@@ -282,6 +325,7 @@ async def list_session_history():
             pass
 
         analyzed = summary_csv.exists() and timeseries_csv.exists() and bands_png.exists()
+        recording_metadata = _recording_metadata_for_session(session_path)
 
         summary = None
         if summary_csv.exists():
@@ -305,7 +349,8 @@ async def list_session_history():
             "session_name": session_path.name,
             "timestamp": display_time,
             "analyzed": analyzed,
-            "recording_label": _recording_label_for_session(session_path),
+            "recording_metadata": recording_metadata,
+            "recording_label": recording_metadata.get("recording_label", "unknown"),
             "summary_csv": str(summary_csv.relative_to(repo_root)) if summary_csv.exists() else None,
             "timeseries_csv": str(timeseries_csv.relative_to(repo_root)) if timeseries_csv.exists() else None,
             "bands_png": str(bands_png.relative_to(repo_root)) if bands_png.exists() else None,
