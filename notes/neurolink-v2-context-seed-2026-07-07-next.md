@@ -43,10 +43,10 @@ The current baseline is verified and stable:
 ## Latest relevant commits
 Latest pushed commits before this handoff:
 
-- `e424433` — Add short session review caution UI test
-- `ffb77e1` — Add review panel provenance UI test
-- `ca5c63e` — Stabilize frontend UI fetch mocks
+- `0226312` — Clarify session history review action
 - `d1dc16e` — Improve live console status bar
+- `92b0c5d` — Add permanent workflow policy to handoff note
+- `22567a6` — Sync handoff note with live console status commit
 
 ## Permanent workflow policy
 These rules are non-optional for every future Neurolink-v2 session:
@@ -122,18 +122,18 @@ These rules are non-optional for every future Neurolink-v2 session:
 10. Use exact, paste-ready shell commands only.
 
 ## Best next objective
-Next slice: improve live console ergonomics one step further by reducing operator scan cost inside the session history and review area, after fresh inspection of the exact `frontend/src/main.jsx` rendering path.
+Next slice: continue live console ergonomics with one additional low-risk review/history scanability improvement, starting from a fresh inspection of the exact `frontend/src/main.jsx` review and session-history rendering blocks.
 
 ## Why this is the best next slice
-- The new Live status bar improves top-level orientation, but the review and history sections still contain dense repeated text and could be made faster to scan.
-- This continues the same UX theme from a now-verified baseline instead of switching contexts prematurely.
-- The current repo state is stable, so another small frontend ergonomics slice is low risk if validated with the normal frontend and backend checks.
+- The action wording improvement is now shipped, but the review/history area still carries dense repeated text that can likely be grouped more efficiently.
+- This stays on the same validated frontend ergonomics track instead of opening a new backend or device-risky thread.
+- The repo is currently in a clean, fully verified state, which makes one more tightly scoped UI polish slice the safest next step.
 
 ## Exact next-step instructions
 1. Start with the session verification block in the permanent workflow policy.
-2. Confirm the live-console status-bar commit hash, then update this note to replace `HEAD` with the real commit.
-3. Inspect the exact `frontend/src/main.jsx` sections for `Latest session review` and `Session history` before proposing any patch.
-4. Choose one focused ergonomics improvement only, such as denser status chips, better visual grouping, or clearer action-button labeling.
+2. Inspect the exact current `frontend/src/main.jsx` sections for `Latest session review` and `Session history` using `grep` and `sed` before proposing any patch.
+3. Choose only one focused scanability improvement, such as compact detail chips, tighter grouping of artifact links, or a clearer reviewed-session state treatment.
+4. Update or extend frontend UI tests only if the visible accessible text or rendered semantics change.
 5. After the slice, rerun:
    ```bash
    npm --prefix frontend run test:run
