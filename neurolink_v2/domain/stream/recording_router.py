@@ -12,6 +12,7 @@ async def get_recording_status():
     return {
         "recording": recorder.is_recording(),
         "path": recorder.current_path(),
+        "stats": recorder.session_stats(),
     }
 
 
@@ -22,6 +23,7 @@ async def start_recording():
         "status": "started",
         "recording": True,
         "path": path,
+        "stats": recorder.session_stats(),
     }
 
 
@@ -32,4 +34,5 @@ async def stop_recording():
         "status": "stopped",
         "recording": False,
         "path": "",
+        "stats": recorder.session_stats(),
     }
