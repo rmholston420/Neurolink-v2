@@ -221,3 +221,165 @@ def test_recording_metadata_falls_back_without_manifest(tmp_path):
     assert metadata.get("duration_seconds") is None
 
 
+@pytest.mark.asyncio
+async def test_analyze_by_name_returns_recording_metadata(tmp_path, monkeypatch):
+    from neurolink_v2.domain.session import analysis_router
+
+    fake_home = tmp_path
+    repo_root = fake_home / "Neurolink-v2"
+    session_dir = repo_root / "data" / "sessions"
+    output_dir = repo_root / "output"
+    tools_dir = repo_root / "tools"
+    session_dir.mkdir(parents=True)
+    output_dir.mkdir(parents=True)
+    tools_dir.mkdir(parents=True)
+
+    session_path = session_dir / "session-20260707-000000.jsonl"
+    session_path.write_text(
+        json.dumps({"ts": 1, "type": "eeg", "payload": {"value": 1}}) + "\n",
+        encoding="utf-8",
+    )
+    session_path.with_suffix(".manifest.json").write_text(
+        json.dumps(
+            {
+                "session_file": str(session_path),
+                "session_name": session_path.name,
+                "manifest_version": 1,
+                "duration_seconds": 12.5,
+                "packet_counts": {"eeg": 25},
+                "eeg_packets": 25,
+                "session_label": "ok",
+                "recording_label": "ok",
+                "start_time": 100.0,
+                "stop_time": 112.5,
+            }
+        ) + "\n",
+        encoding="utf-8",
+    )
+
+    summary_csv = output_dir / "session-20260707-000000-summary.csv"
+    summary_csv.write_text(
+        "mean_delta,mean_theta,mean_alpha,mean_beta,mean_gamma,overall_quality,primary_channel,samples,duration_s\n"
+        "1,1,2,1,1,good,1,25,12.5\n",
+        encoding="utf-8",
+    )
+    timeseries_csv = output_dir / "session-20260707-000000-band-timeseries.csv"
+    timeseries_csv.write_text("t,alpha\n0,0.5\n", encoding="utf-8")
+    bands_png = output_dir / "session-20260707-000000-bands.png"
+    bands_png.write_bytes(b"png")
+
+    script_path = tools_dir / "analyze_session.py"
+    script_path.write_text("# stub\n", encoding="utf-8")
+
+    monkeypatch.setattr(analysis_router.Path, "home", staticmethod(lambda: fake_home))
+
+    class DummyProc:
+        returncode = 0
+        stdout = "\n".join(
+            [
+                str(timeseries_csv.relative_to(repo_root)),
+                str(summary_csv.relative_to(repo_root)),
+                str(bands_png.relative_to(repo_root)),
+            ]
+        )
+        stderr = ""
+
+    monkeypatch.setattr(analysis_router.subprocess, "run", lambda *args, **kwargs: DummyProc())
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post(f"/api/sessions/analyze-by-name/{session_path.name}")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["recording_metadata"]["recording_label"] == "ok"
+    assert body["recording_metadata"]["duration_seconds"] == 12.5
+    assert body["recording_metadata"]["eeg_packets"] == 25
+    assert body["summary"]["recording_label"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_analyze_latest_returns_recording_metadata(tmp_path, monkeypatch):
+    from neurolink_v2.domain.session import analysis_router
+
+    fake_home = tmp_path
+    repo_root = fake_home / "Neurolink-v2"
+    session_dir = repo_root / "data" / "sessions"
+    output_dir = repo_root / "output"
+    tools_dir = repo_root / "tools"
+    session_dir.mkdir(parents=True)
+    output_dir.mkdir(parents=True)
+    tools_dir.mkdir(parents=True)
+
+    older_session = session_dir / "session-20260707-000000.jsonl"
+    older_session.write_text(
+        json.dumps({"ts": 1, "type": "eeg", "payload": {"value": 1}}) + "\n",
+        encoding="utf-8",
+    )
+
+    latest_session = session_dir / "session-20260707-000500.jsonl"
+    latest_session.write_text(
+        "".join(
+            json.dumps({"ts": i, "type": "eeg", "payload": {"value": i}}) + "\n"
+            for i in range(25)
+        ),
+        encoding="utf-8",
+    )
+    latest_session.with_suffix(".manifest.json").write_text(
+        json.dumps(
+            {
+                "session_file": str(latest_session),
+                "session_name": latest_session.name,
+                "manifest_version": 1,
+                "duration_seconds": 12.5,
+                "packet_counts": {"eeg": 25},
+                "eeg_packets": 25,
+                "session_label": "ok",
+                "recording_label": "ok",
+                "start_time": 200.0,
+                "stop_time": 212.5,
+            }
+        ) + "\n",
+        encoding="utf-8",
+    )
+
+    summary_csv = output_dir / "session-20260707-000500-summary.csv"
+    summary_csv.write_text(
+        "mean_delta,mean_theta,mean_alpha,mean_beta,mean_gamma,overall_quality,primary_channel,samples,duration_s\n"
+        "1,1,2,1,1,good,1,25,12.5\n",
+        encoding="utf-8",
+    )
+    timeseries_csv = output_dir / "session-20260707-000500-band-timeseries.csv"
+    timeseries_csv.write_text("t,alpha\n0,0.5\n", encoding="utf-8")
+    bands_png = output_dir / "session-20260707-000500-bands.png"
+    bands_png.write_bytes(b"png")
+
+    script_path = tools_dir / "analyze_session.py"
+    script_path.write_text("# stub\n", encoding="utf-8")
+
+    monkeypatch.setattr(analysis_router.Path, "home", staticmethod(lambda: fake_home))
+
+    class DummyProc:
+        returncode = 0
+        stdout = "\n".join(
+            [
+                str(timeseries_csv.relative_to(repo_root)),
+                str(summary_csv.relative_to(repo_root)),
+                str(bands_png.relative_to(repo_root)),
+            ]
+        )
+        stderr = ""
+
+    monkeypatch.setattr(analysis_router.subprocess, "run", lambda *args, **kwargs: DummyProc())
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post("/api/sessions/analyze-latest")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["recording_metadata"]["recording_label"] == "ok"
+    assert body["recording_metadata"]["duration_seconds"] == 12.5
+    assert body["recording_metadata"]["eeg_packets"] == 25
+    assert body["summary"]["recording_label"] == "ok"
+
