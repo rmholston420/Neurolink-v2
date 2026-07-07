@@ -1396,6 +1396,22 @@ function App() {
                           Short recording
                         </div>
                       ) : null}
+                      {session.recording_metadata?.recording_metadata_source === 'fallback' ? (
+                        <div
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            background: 'rgba(148,163,184,0.12)',
+                            border: '1px solid rgba(148,163,184,0.28)',
+                            color: '#cbd5e1',
+                          }}
+                          title="Session metadata reconstructed heuristically from legacy session data"
+                        >
+                          Metadata: heuristic
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
