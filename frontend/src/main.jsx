@@ -1209,11 +1209,25 @@ function App() {
               >
                 <h3 style={{ marginTop: 0 }}>Signal note</h3>
                 <p style={{ marginTop: 8, color: "#555" }}>{getSignalGuidanceHint(reviewSummary)}</p>
-                <p style={{ color: '#9eb0d1', marginBottom: 0 }}>
+                <p style={{ color: '#9eb0d1', marginBottom: reviewSummary.short_session ? 10 : 0 }}>
                   {getSignalGuidanceHint(reviewSummary) ||
                   latestSessionSignalNote?.body ||
                   'Run a session analysis to generate a quick interpretation.'}
                 </p>
+                {reviewSummary.short_session && reviewSummary.short_session_caution && (
+                  <div
+                    style={{
+                      marginTop: 0,
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      border: '1px solid rgba(245, 158, 11, 0.35)',
+                      color: '#fbbf24',
+                    }}
+                  >
+                    {reviewSummary.short_session_caution}
+                  </div>
+                )}
               </div>
 
               <div

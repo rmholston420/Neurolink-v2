@@ -46,13 +46,26 @@ def _harden_summary_ratios(summary: dict) -> dict:
 def _recording_label_for_session(session_path: Path) -> str:
     try:
         line_count = 0
-        with session_path.open('r', encoding='utf-8') as fh:
+        with session_path.open("r", encoding="utf-8") as fh:
             for _ in fh:
                 line_count += 1
     except Exception:
-        return 'unknown'
+        return "unknown"
 
-    return 'short' if line_count < 20 else 'ok'
+    return "short" if line_count < 20 else "ok"
+
+
+def _inject_short_session_caution(summary: dict, session_path: Path | None) -> dict:
+    summary = dict(summary)
+    label = _recording_label_for_session(session_path) if session_path is not None else "unknown"
+    summary["recording_label"] = label
+    summary["short_session"] = label == "short"
+    summary["short_session_caution"] = (
+        "Recording is short; treat post-session interpretation as lower confidence."
+        if label == "short"
+        else None
+    )
+    return summary
 
 
 
@@ -133,6 +146,10 @@ async def analyze_latest_session():
             overall_quality=overall_quality,
         )
     )
+
+    session_files = sorted((repo_root / "data" / "sessions").glob("session-*.jsonl"))
+    latest_session = session_files[-1] if session_files else None
+    summary = _inject_short_session_caution(summary, latest_session)
 
     return {
         "status": "ok",
@@ -230,6 +247,8 @@ async def analyze_session_by_name(session_name: str):
             overall_quality=overall_quality,
         )
     )
+
+    summary = _inject_short_session_caution(summary, session_path)
 
     return {
         "status": "ok",
