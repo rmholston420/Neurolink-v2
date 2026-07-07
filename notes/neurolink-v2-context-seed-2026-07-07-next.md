@@ -31,7 +31,8 @@ The current baseline is verified and stable:
 - Session-review artifact links exist
 - Frontend session cards show a `Short recording` badge when the backend marks a session as short
 - Frontend session history cards now also show `Metadata: heuristic` only for fallback-based legacy metadata
-- Session history recording metadata detail panels now show `Metadata source: heuristic fallback` only for fallback-derived metadata
+- Session history summary detail panels now render compact chips for primary channel, alpha/(alpha+beta), fast/total, and slow/total, with guidance retained below the chip row
+- Session history recording metadata detail panels now render compact chips for duration, EEG packets, and `Metadata: heuristic fallback` only for fallback-derived metadata
 - Frontend now has minimal Vitest + Testing Library UI test infrastructure
 - Frontend UI coverage includes a smoke test, a session-history provenance regression test, a review-time Recording context provenance test, and a review-time short-session caution test
 - Latest session review shows a caution in the Signal note card when the analyzed session is short
@@ -43,10 +44,10 @@ The current baseline is verified and stable:
 ## Latest relevant commits
 Latest pushed commits before this handoff:
 
+- `e517d71` — Compact session history detail chips
 - `0226312` — Clarify session history review action
 - `d1dc16e` — Improve live console status bar
 - `92b0c5d` — Add permanent workflow policy to handoff note
-- `22567a6` — Sync handoff note with live console status commit
 
 ## Permanent workflow policy
 These rules are non-optional for every future Neurolink-v2 session:
@@ -125,14 +126,14 @@ These rules are non-optional for every future Neurolink-v2 session:
 Next slice: continue live console ergonomics with one additional low-risk review/history scanability improvement, starting from a fresh inspection of the exact `frontend/src/main.jsx` review and session-history rendering blocks.
 
 ## Why this is the best next slice
-- The action wording improvement is now shipped, but the review/history area still carries dense repeated text that can likely be grouped more efficiently.
+- The compact detail chip improvement is now shipped, but the review/history area still has room for one more small scanability pass.
 - This stays on the same validated frontend ergonomics track instead of opening a new backend or device-risky thread.
 - The repo is currently in a clean, fully verified state, which makes one more tightly scoped UI polish slice the safest next step.
 
 ## Exact next-step instructions
 1. Start with the session verification block in the permanent workflow policy.
 2. Inspect the exact current `frontend/src/main.jsx` sections for `Latest session review` and `Session history` using `grep` and `sed` before proposing any patch.
-3. Choose only one focused scanability improvement, such as compact detail chips, tighter grouping of artifact links, or a clearer reviewed-session state treatment.
+3. Choose only one focused scanability improvement that is not already shipped, such as tighter grouping of artifact links or a clearer reviewed-session state treatment.
 4. Update or extend frontend UI tests only if the visible accessible text or rendered semantics change.
 5. After the slice, rerun:
    ```bash
