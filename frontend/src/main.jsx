@@ -1367,6 +1367,27 @@ function App() {
                     </div>
                   </div>
 
+                  {session.recording_metadata ? (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 10,
+                        borderRadius: 10,
+                        background: 'rgba(59,130,246,0.08)',
+                        border: '1px solid rgba(96,165,250,0.16)',
+                        color: '#cbd5e1',
+                        fontSize: 13,
+                      }}
+                    >
+                      <div>
+                        Duration (s): {session.recording_metadata.duration_seconds ?? 'n/a'}
+                      </div>
+                      <div>
+                        EEG packets: {session.recording_metadata.eeg_packets ?? 'n/a'}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {session.summary ? (
                     <div
                       style={{
