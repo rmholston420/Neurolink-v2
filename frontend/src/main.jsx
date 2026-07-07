@@ -1619,7 +1619,7 @@ export function App() {
                           onClick={() => viewSession(session)}
                           disabled={selectedSessionName === session.session_name}
                         >
-                          {selectedSessionName === session.session_name ? 'Viewing' : 'View'}
+                          {selectedSessionName === session.session_name ? 'Review open' : 'Open review'}
                         </button>
                         <button
                           onClick={() => analyzeSessionByName(session.session_name)}

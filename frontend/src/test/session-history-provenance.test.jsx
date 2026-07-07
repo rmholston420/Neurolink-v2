@@ -53,7 +53,7 @@ describe('Session history provenance rendering', () => {
 
     await screen.findByText('manifest-review-session')
 
-    const viewButton = await screen.findByRole('button', { name: 'View' })
+    const viewButton = await screen.findByRole('button', { name: 'Open review' })
     fireEvent.click(viewButton)
 
     await waitFor(() => {
@@ -115,7 +115,7 @@ describe('Session history provenance rendering', () => {
 
     await screen.findByText('short-review-session')
 
-    const viewButton = await screen.findByRole('button', { name: 'View' })
+    const viewButton = await screen.findByRole('button', { name: 'Open review' })
     fireEvent.click(viewButton)
 
     await waitFor(() => {
