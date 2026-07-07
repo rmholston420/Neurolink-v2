@@ -42,8 +42,8 @@ The current baseline is verified and stable:
 ## Latest relevant commits
 Latest pushed commits before this handoff:
 
+- `ca5c63e` — Stabilize frontend UI fetch mocks
 - `9434d7d` — Add session history provenance UI test
-- `a1fd9cd` — Add minimal frontend UI test infrastructure
 - `e632660` — Refresh tracked handoff note for provenance UI
 
 ## Important files
@@ -101,19 +101,19 @@ Latest pushed commits before this handoff:
 10. Use exact, paste-ready shell commands only.
 
 ## Best next objective
-Next slice: reduce frontend test noise by making the UI tests deterministic around startup network effects, so Vitest runs do not emit expected `fetch failed` noise during unrelated tests.
+Next slice: add one focused frontend test that verifies the review-time `Recording context` provenance rendering for analyzed session responses, so the latest review panel is covered alongside the existing session-history provenance safeguard.
 
 ## Why this is the best next slice
-- The frontend provenance safeguard is now covered by an actual regression test.
-- The remaining rough edge in the new UI harness is test-run noise from startup fetches during component mount.
-- Cleaning that up is a small, test-focused hardening step that improves future UI test work without changing product behavior.
-- This stays aligned with the current pattern of small, reversible reliability improvements.
+- Session-history provenance is now covered, and startup fetch noise in Vitest has been cleaned up.
+- The review panel already renders provenance labels such as `persisted manifest`, `heuristic fallback`, and `unknown`, but that path does not yet have direct frontend regression coverage.
+- Adding one review-focused UI test is small, reversible, and stays aligned with the current pattern of tightening confidence around recently added semantics.
+- This improves protection for a user-visible interpretation path without requiring product behavior changes.
 
 ## Exact next-step instructions
-1. Inspect the current frontend test files and setup file.
-2. Inspect where `App` startup effects trigger `fetchRecordingState()` and `loadSessionHistory()`.
-3. Add a small shared fetch mock or setup helper so tests do not fall through to real network calls during mount.
-4. Keep the slice test-only if possible; avoid changing product logic unless needed for testability.
+1. Inspect the current frontend test files plus the exact review-panel rendering path in `frontend/src/main.jsx`.
+2. Identify the minimal user flow or state setup needed to render review-time `Recording context`.
+3. Add one focused frontend test that asserts provenance text in the review panel for at least one analyzed-session response.
+4. Keep the slice test-only if possible; avoid changing product logic unless the test reveals a real testability gap.
 5. Run:
    ```bash
    cd ~/Neurolink-v2
@@ -122,4 +122,4 @@ Next slice: reduce frontend test noise by making the UI tests deterministic arou
    pytest -q
    git status
    ```
-6. Commit only the focused test-harness hardening change.
+6. Commit only the focused review-panel test coverage change.
