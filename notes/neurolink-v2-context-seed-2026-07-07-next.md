@@ -35,6 +35,7 @@ The current baseline is verified and stable:
 - Frontend now has minimal Vitest + Testing Library UI test infrastructure
 - Frontend UI coverage includes a smoke test, a session-history provenance regression test, a review-time Recording context provenance test, and a review-time short-session caution test
 - Latest session review shows a caution in the Signal note card when the analyzed session is short
+- Frontend live console now includes a compact Live status bar summarizing headset presence, recording state, review target, and analysis/signal interpretation state
 - Analysis responses include `recording_metadata`
 - `recording_metadata` includes `recording_metadata_source` with values `manifest`, `fallback`, and `unknown`
 - Review-time `Recording context` renders metadata provenance as `persisted manifest`, `heuristic fallback`, or `unknown`
@@ -45,6 +46,7 @@ Latest pushed commits before this handoff:
 - `e424433` — Add short session review caution UI test
 - `ffb77e1` — Add review panel provenance UI test
 - `ca5c63e` — Stabilize frontend UI fetch mocks
+- `d1dc16e` — Improve live console status bar
 
 ## Permanent workflow policy
 These rules are non-optional for every future Neurolink-v2 session:
@@ -77,7 +79,7 @@ These rules are non-optional for every future Neurolink-v2 session:
 - `tools/analyze_session.py` — post-session artifact generation script
 
 ### Frontend
-- `frontend/src/main.jsx` — operator console, session recording/review UI, live channel label mapping, Signal note card, recording context card, provenance rendering, session-history badges, fallback metadata detail hints, and exportable app entry for UI tests
+- `frontend/src/main.jsx` — operator console, live status bar, session recording/review UI, live channel label mapping, Signal note card, recording context card, provenance rendering, session-history badges, fallback metadata detail hints, and exportable app entry for UI tests
 - `frontend/vite.config.js` — Vite + Vitest frontend test configuration
 - `frontend/src/test/app.smoke.test.jsx` — frontend smoke test
 - `frontend/src/test/session-history-provenance.test.jsx` — frontend regression test for fallback provenance rendering
@@ -120,16 +122,23 @@ These rules are non-optional for every future Neurolink-v2 session:
 10. Use exact, paste-ready shell commands only.
 
 ## Best next objective
-Next slice: choose a new small objective only after fresh inspection of the current repo state, the tracked handoff note, and the exact live code paths involved.
+Next slice: improve live console ergonomics one step further by reducing operator scan cost inside the session history and review area, after fresh inspection of the exact `frontend/src/main.jsx` rendering path.
 
 ## Why this is the best next slice
-- The previous note-refresh objective has already been completed.
-- The repo now has a stable, verified baseline and tracked handoff context.
-- The highest-value next step should be selected from current code inspection rather than from stale assumptions.
-- This keeps future work aligned with the permanent workflow policy above.
+- The new Live status bar improves top-level orientation, but the review and history sections still contain dense repeated text and could be made faster to scan.
+- This continues the same UX theme from a now-verified baseline instead of switching contexts prematurely.
+- The current repo state is stable, so another small frontend ergonomics slice is low risk if validated with the normal frontend and backend checks.
 
 ## Exact next-step instructions
 1. Start with the session verification block in the permanent workflow policy.
-2. Inspect the current note and the exact frontend or backend files that appear most likely to contain the next smallest high-value gap.
-3. Only after inspection, choose one focused objective and implement it with a paste-ready patch or guarded script.
-4. After the slice, rerun verification, inspect `git status`, and update this note if the verified baseline or workflow-relevant context changed.
+2. Confirm the live-console status-bar commit hash, then update this note to replace `HEAD` with the real commit.
+3. Inspect the exact `frontend/src/main.jsx` sections for `Latest session review` and `Session history` before proposing any patch.
+4. Choose one focused ergonomics improvement only, such as denser status chips, better visual grouping, or clearer action-button labeling.
+5. After the slice, rerun:
+   ```bash
+   npm --prefix frontend run test:run
+   npm --prefix frontend run build
+   pytest -q
+   git status
+   ```
+6. Update this note again if the verified baseline, latest commits, or next objective changed.
