@@ -1191,6 +1191,22 @@ function App() {
                   padding: 12,
                 }}
               >
+                <h3 style={{ marginTop: 0 }}>Recording context</h3>
+                <p>Recording label: {reviewSummary.recording_label || 'n/a'}</p>
+                <p>Duration (s): {selectedSession?.recording_metadata?.duration_seconds ?? 'n/a'}</p>
+                <p style={{ marginBottom: 0 }}>
+                  EEG packets: {selectedSession?.recording_metadata?.eeg_packets ?? 'n/a'}
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background: '#0b1220',
+                  border: '1px solid rgba(158,176,209,0.14)',
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
                 <h3 style={{ marginTop: 0 }}>Band means</h3>
                 <p>Mean alpha: {reviewSummary.mean_alpha || 'n/a'}</p>
                 <p>Mean beta: {reviewSummary.mean_beta || 'n/a'}</p>
