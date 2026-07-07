@@ -1398,8 +1398,7 @@ export function App() {
                 }}
               >
                 <h3 style={{ marginTop: 0 }}>Signal note</h3>
-                <p style={{ marginTop: 8, color: "#555" }}>{getSignalGuidanceHint(reviewSummary)}</p>
-                <p style={{ color: '#9eb0d1', marginBottom: reviewSummary.short_session ? 10 : 0 }}>
+                <p style={{ color: '#cbd5e1', marginBottom: reviewSummary.short_session ? 10 : 0 }}>
                   {getSignalGuidanceHint(reviewSummary) ||
                   latestSessionSignalNote?.body ||
                   'Run a session analysis to generate a quick interpretation.'}
