@@ -30,6 +30,7 @@ The current baseline is verified and stable:
 - Session-review artifact links exist
 - Frontend session cards show a `Short recording` badge when the backend marks a session as short
 - Frontend session history cards now also show `Metadata: heuristic` only for fallback-based legacy metadata
+- Session history recording metadata detail panels now show `Metadata source: heuristic fallback` only for fallback-derived metadata
 - Latest session review shows a caution in the Signal note card when the analyzed session is short
 - Analysis responses include `recording_metadata`
 - `recording_metadata` includes `recording_metadata_source` with values `manifest`, `fallback`, and `unknown`
@@ -38,9 +39,9 @@ The current baseline is verified and stable:
 ## Latest relevant commits
 Latest pushed commits before this handoff:
 
-- `dd9af7f` — Annotate recording metadata provenance
 - `a73aab5` — Show recording metadata provenance in review
 - `88cd4e6` — Show fallback metadata hint in session history
+- `4856bc5` — Clarify fallback metadata in session history details
 
 ## Important files
 ### Backend
@@ -54,7 +55,7 @@ Latest pushed commits before this handoff:
 - `tools/analyze_session.py` — post-session artifact generation script
 
 ### Frontend
-- `frontend/src/main.jsx` — operator console, session recording/review UI, live channel label mapping, Signal note card, recording context card, provenance rendering, session-history badges
+- `frontend/src/main.jsx` — operator console, session recording/review UI, live channel label mapping, Signal note card, recording context card, provenance rendering, session-history badges, and fallback metadata detail hints
 
 ### Tests
 - `tests/test_bandpower.py`
@@ -94,25 +95,24 @@ Latest pushed commits before this handoff:
 10. Use exact, paste-ready shell commands only.
 
 ## Best next objective
-Next slice: reduce visual ambiguity for legacy sessions by surfacing provenance directly inside the recording metadata detail panel as well, but only when helpful and without cluttering manifest-backed sessions.
+Next slice: add a small regression test or UI-focused safeguard around fallback metadata presentation so the provenance behavior is less likely to drift during future session-history changes.
 
 ## Why this is the best next slice
-- Provenance is now visible in review and in session-history badges.
-- The remaining opportunity is to make legacy fallback semantics clearer in the metadata detail area itself.
-- This would still be a small frontend-only follow-through.
-- It keeps operator interpretation aligned with metadata authority without introducing backend risk.
+- The frontend provenance story is now complete across review, history badges, and history metadata details.
+- The next highest-value work is preserving that behavior rather than adding more UI text.
+- A narrow safeguard is lower risk than another feature slice and helps keep future refactors honest.
+- This also keeps the project in the current pattern of small, reversible hardening steps.
 
 ## Exact next-step instructions
-1. Open `frontend/src/main.jsx`.
-2. Locate the `session.recording_metadata` detail block inside the session history card.
-3. Add a subtle inline provenance row only when `session.recording_metadata.recording_metadata_source === "fallback"`.
-4. Do not add extra text for `manifest`.
-5. Keep styling quieter than the main badges.
-6. Run:
+1. Inspect existing frontend test coverage or current project conventions for UI verification.
+2. If lightweight UI testing already exists, add one focused regression test for fallback provenance rendering.
+3. If frontend UI tests do not exist yet, document the provenance expectations in the tracked handoff note and defer test harness work.
+4. Keep the slice small; avoid mixing new backend logic with test/setup work.
+5. Run:
    ```bash
    cd ~/Neurolink-v2
    npm --prefix frontend run build
    pytest -q
    git status
    ```
-7. Commit only the focused frontend change.
+6. Commit only the focused safeguard or note update.
