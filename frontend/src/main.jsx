@@ -1202,6 +1202,13 @@ function App() {
               >
                 <h3 style={{ marginTop: 0 }}>Recording context</h3>
                 <p>Recording label: {reviewSummary.recording_label || 'n/a'}</p>
+                <p>
+                  Metadata source: {{
+                    manifest: 'persisted manifest',
+                    fallback: 'heuristic fallback',
+                    unknown: 'unknown',
+                  }[analysisState.recordingMetadata?.recording_metadata_source || 'unknown']}
+                </p>
                 <p>Duration (s): {analysisState.recordingMetadata?.duration_seconds ?? 'n/a'}</p>
                 <p style={{ marginBottom: 0 }}>
                   EEG packets: {analysisState.recordingMetadata?.eeg_packets ?? 'n/a'}
