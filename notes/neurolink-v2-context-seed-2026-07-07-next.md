@@ -39,9 +39,9 @@ The current baseline is verified and stable:
 ## Latest relevant commits
 Latest pushed commits before this handoff:
 
-- `a73aab5` — Show recording metadata provenance in review
-- `88cd4e6` — Show fallback metadata hint in session history
+- `e632660` — Refresh tracked handoff note for provenance UI
 - `4856bc5` — Clarify fallback metadata in session history details
+- `789bddb` — Add tracked next-session handoff note
 
 ## Important files
 ### Backend
