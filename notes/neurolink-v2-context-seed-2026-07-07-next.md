@@ -46,6 +46,25 @@ Latest pushed commits before this handoff:
 - `ffb77e1` — Add review panel provenance UI test
 - `ca5c63e` — Stabilize frontend UI fetch mocks
 
+## Permanent workflow policy
+These rules are non-optional for every future Neurolink-v2 session:
+
+1. Start every session with the exact verification block:
+   ```bash
+   cd ~/Neurolink-v2
+   git status
+   pytest -q
+   npm --prefix frontend run build
+   npm --prefix frontend run test:run
+   sed -n '1,260p' notes/neurolink-v2-context-seed-2026-07-07-next.md
+   ```
+2. Inspect first, patch second. Never propose or apply a patch until the exact live file contents and patch anchors have been inspected with `sed`, `nl`, `grep`, or equivalent commands.
+3. Never rely on memory for file contents, line ranges, or repo state. Re-inspect before each new patch.
+4. Never require manual editing. Use exact, copy-pasteable shell commands or guarded scripts only.
+5. Make one focused change at a time, then rerun the relevant verification commands before committing.
+6. Commit only intended files, and keep handoff/context notes in a tracked path such as `notes/`, not `output/`.
+7. At the end of each slice, update the handoff note if workflow, verified baseline, recent commits, or the next-session starting point has changed.
+
 ## Important files
 ### Backend
 - `neurolink_v2/main.py` — FastAPI app entrypoint and router integration
@@ -101,31 +120,16 @@ Latest pushed commits before this handoff:
 10. Use exact, paste-ready shell commands only.
 
 ## Best next objective
-Next slice: refresh this tracked handoff note so it reflects the newly landed frontend review-coverage work, then begin the next coding session from fresh inspection of the current frontend and backend surfaces to choose a new small objective.
+Next slice: choose a new small objective only after fresh inspection of the current repo state, the tracked handoff note, and the exact live code paths involved.
 
 ## Why this is the best next slice
-- The previously documented review-panel provenance objective has already been completed and pushed.
-- Frontend UI coverage now protects session-history fallback provenance, review-time manifest provenance, and review-time short-session caution.
-- The highest-value immediate gap is now project-context drift: the tracked note no longer matches the latest landed commits or the current tested frontend coverage.
-- Refreshing the note keeps the next session grounded in the real repo state before selecting a new feature or hardening slice.
+- The previous note-refresh objective has already been completed.
+- The repo now has a stable, verified baseline and tracked handoff context.
+- The highest-value next step should be selected from current code inspection rather than from stale assumptions.
+- This keeps future work aligned with the permanent workflow policy above.
 
 ## Exact next-step instructions
-1. Update this note’s latest-commits section and verified frontend UI coverage bullets to reflect the newly landed review tests.
-2. Replace the completed review-panel objective with a workflow note that the next coding session should begin from fresh inspection-driven objective selection.
-3. Run:
-   ```bash
-   cd ~/Neurolink-v2
-   git diff -- notes/neurolink-v2-context-seed-2026-07-07-next.md
-   git add notes/neurolink-v2-context-seed-2026-07-07-next.md
-   git commit -m "Refresh handoff note after review UI tests"
-   git push origin main
-   ```
-4. In the following session, start with:
-   ```bash
-   cd ~/Neurolink-v2
-   git status
-   pytest -q
-   npm --prefix frontend run build
-   npm --prefix frontend run test:run
-   sed -n '1,260p' notes/neurolink-v2-context-seed-2026-07-07-next.md
-   ```
+1. Start with the session verification block in the permanent workflow policy.
+2. Inspect the current note and the exact frontend or backend files that appear most likely to contain the next smallest high-value gap.
+3. Only after inspection, choose one focused objective and implement it with a paste-ready patch or guarded script.
+4. After the slice, rerun verification, inspect `git status`, and update this note if the verified baseline or workflow-relevant context changed.
