@@ -438,7 +438,7 @@ function App() {
   const [events, setEvents] = useState([])
   const [bandHistory, setBandHistory] = useState([])
   const [recordingState, setRecordingState] = useState({ recording: false, path: '' })
-  const [analysisState, setAnalysisState] = useState({ status: 'idle', summary: null, error: '', bandsPng: '', summaryCsv: '', timeseriesCsv: '' })
+  const [analysisState, setAnalysisState] = useState({ status: 'idle', summary: null, error: '', bandsPng: '', summaryCsv: '', timeseriesCsv: '', recordingMetadata: null })
   const [sessionHistory, setSessionHistory] = useState([])
   const [sessionHistoryStatus, setSessionHistoryStatus] = useState('idle')
   const [selectedSessionName, setSelectedSessionName] = useState('')
@@ -655,6 +655,7 @@ function App() {
       bandsPng: '',
       summaryCsv: '',
       timeseriesCsv: '',
+      recordingMetadata: null,
     })
     try {
       const r = await fetch(`${apiBase}/sessions/analyze-by-name/${encodeURIComponent(sessionName)}`, {
@@ -669,6 +670,7 @@ function App() {
           bandsPng: '',
           summaryCsv: '',
           timeseriesCsv: '',
+          recordingMetadata: null,
         })
         pushEvent(`analysis failed for ${sessionName}`)
         return
@@ -682,6 +684,7 @@ function App() {
         bandsPng: data.bands_png || '',
         summaryCsv: data.summary_csv || '',
         timeseriesCsv: data.timeseries_csv || '',
+        recordingMetadata: data.recording_metadata || null,
       })
       pushEvent(`analysis complete for ${sessionName}`)
       await fetchRecordingState()
@@ -695,6 +698,7 @@ function App() {
         bandsPng: '',
         summaryCsv: '',
         timeseriesCsv: '',
+        recordingMetadata: null,
       })
       pushEvent(`analysis failed for ${sessionName}`)
     }
@@ -710,6 +714,7 @@ function App() {
       bandsPng: session.bands_png || prev.bandsPng || '',
       summaryCsv: session.summary_csv || prev.summaryCsv || '',
       timeseriesCsv: session.timeseries_csv || prev.timeseriesCsv || '',
+      recordingMetadata: session.recording_metadata || prev.recordingMetadata || null,
     }))
   }
 
@@ -721,6 +726,7 @@ function App() {
       bandsPng: '',
       summaryCsv: '',
       timeseriesCsv: '',
+      recordingMetadata: null,
     })
     try {
       const r = await fetch(`${apiBase}/sessions/analyze-latest`, { method: 'POST' })
@@ -733,6 +739,7 @@ function App() {
           bandsPng: '',
           summaryCsv: '',
           timeseriesCsv: '',
+          recordingMetadata: null,
         })
         pushEvent('session analysis failed')
         return
@@ -744,6 +751,7 @@ function App() {
         bandsPng: data.bands_png || '',
         summaryCsv: data.summary_csv || '',
         timeseriesCsv: data.timeseries_csv || '',
+        recordingMetadata: data.recording_metadata || null,
       })
       pushEvent('session analysis complete')
       await fetchRecordingState()
@@ -757,6 +765,7 @@ function App() {
         bandsPng: '',
         summaryCsv: '',
         timeseriesCsv: '',
+        recordingMetadata: null,
       })
       pushEvent('session analysis failed')
     }
@@ -1193,9 +1202,9 @@ function App() {
               >
                 <h3 style={{ marginTop: 0 }}>Recording context</h3>
                 <p>Recording label: {reviewSummary.recording_label || 'n/a'}</p>
-                <p>Duration (s): {selectedSession?.recording_metadata?.duration_seconds ?? 'n/a'}</p>
+                <p>Duration (s): {analysisState.recordingMetadata?.duration_seconds ?? 'n/a'}</p>
                 <p style={{ marginBottom: 0 }}>
-                  EEG packets: {selectedSession?.recording_metadata?.eeg_packets ?? 'n/a'}
+                  EEG packets: {analysisState.recordingMetadata?.eeg_packets ?? 'n/a'}
                 </p>
               </div>
 

@@ -192,6 +192,7 @@ async def analyze_latest_session():
 
     session_files = sorted((repo_root / "data" / "sessions").glob("session-*.jsonl"))
     latest_session = session_files[-1] if session_files else None
+    recording_metadata = _recording_metadata_for_session(latest_session)
     summary = _inject_short_session_caution(summary, latest_session)
 
     return {
@@ -200,6 +201,7 @@ async def analyze_latest_session():
         "summary_csv": summary_csv,
         "bands_png": bands_png,
         "summary": summary,
+        "recording_metadata": recording_metadata,
     }
 
 
@@ -291,6 +293,7 @@ async def analyze_session_by_name(session_name: str):
         )
     )
 
+    recording_metadata = _recording_metadata_for_session(session_path)
     summary = _inject_short_session_caution(summary, session_path)
 
     return {
@@ -299,6 +302,7 @@ async def analyze_session_by_name(session_name: str):
         "summary_csv": summary_csv,
         "bands_png": bands_png,
         "summary": summary,
+        "recording_metadata": recording_metadata,
     }
 
 
