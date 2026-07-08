@@ -187,7 +187,18 @@ function OperatorChannelCard({ channelKey, channelNames, bands, quality }) {
       </div>
 
       <div style={{ marginTop: 10, color: '#9eb0d1', fontSize: 12 }}>
-        <div><span style={{ color: '#c9d7f2' }}>Reason:</span> {qualityReason}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <span
+            style={{
+              ...detailChipBase,
+              color: '#c9d7f2',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(158,176,209,0.14)',
+            }}
+          >
+            Reason: {qualityReason}
+          </span>
+        </div>
         {qualityGuidance ? (
           <div
             style={{
