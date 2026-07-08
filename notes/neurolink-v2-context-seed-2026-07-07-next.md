@@ -23,6 +23,7 @@ The current baseline is verified and stable:
 - Live EEG websocket streaming works
 - Battery telemetry is visible during streaming
 - Per-channel band powers, `band_debug`, `band_quality`, and operator guidance are shown in the frontend live console
+- Live operator channel cards now render signal reason as a compact chip above operator guidance
 - Live Athena channel labels map correctly to `TP9`, `AF7`, `AF8`, and `TP10`
 - Session recording works
 - Recorder persists a per-session manifest adjacent to each session JSONL
@@ -49,11 +50,11 @@ The current baseline is verified and stable:
 
 Latest pushed commits before this handoff:
 
+- `c55b9aa` — Compress live signal reason display
 - `af1dbbf` — Tighten session history artifact row
 - `0c5fc41` — Clarify active session review state
 - `e517d71` — Compact session history detail chips
 - `0226312` — Clarify session history review action
-- `d1dc16e` — Improve live console status bar
 
 ## Permanent workflow policy
 These rules are non-optional for every future Neurolink-v2 session:
@@ -130,19 +131,19 @@ These rules are non-optional for every future Neurolink-v2 session:
 
 ## Best next objective
 
-Next slice: pause on review/history scanability unless a new concrete usability issue appears, or begin a different low-risk frontend ergonomics pass from a fresh inspection of the exact rendered path.
+Next slice: pause unless a new concrete usability issue appears, or begin a different low-risk frontend ergonomics pass from a fresh inspection of the exact rendered path, with live-console density and review/history scanability both in a materially improved state.
 
 ## Why this is the best next slice
 
-- The recent review/history scanability goals are now materially improved through compact detail chips, clearer reviewed-session state treatment, and a tighter artifact row.
-- This is a good stopping point on the current frontend ergonomics thread before diminishing-return polish work accumulates.
-- The repo is currently in a clean, fully verified state, which makes preserving this baseline preferable to forcing another small tweak immediately.
+- The recent frontend ergonomics work has now improved both live-console density and review/history scanability through several small validated slices.
+- This is a good stopping point before diminishing-return polish work accumulates in the same UI areas.
+- The repo is currently in a clean, fully verified state after the latest live-console refinement, which makes preserving this baseline preferable to forcing another tweak immediately.
 
 ## Exact next-step instructions
 
 1. Start with the session verification block in the permanent workflow policy.
 2. Inspect the exact current rendered path with `grep`, `sed`, and `nl` before proposing any further patch.
-3. Prefer a different low-risk frontend ergonomics target unless a concrete remaining review/history issue is observed first.
+3. Prefer a different low-risk frontend ergonomics target only if a concrete remaining issue is observed first.
 4. Update or extend frontend UI tests only if the visible accessible text or rendered semantics change.
 5. After the slice, rerun:
   ```bash
