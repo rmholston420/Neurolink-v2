@@ -203,6 +203,73 @@ def test_recording_metadata_prefers_manifest(tmp_path):
     assert metadata["recording_metadata_source"] == "manifest"
 
 
+
+
+def test_harden_summary_ratios_backfills_and_computes_safe_ratios():
+    import pytest
+    from neurolink_v2.domain.session.analysis_router import _harden_summary_ratios
+
+    # Case 1: mean_* fields only, alpha-dominant profile
+    summary = {
+        "mean_delta": 0.05,
+        "mean_theta": 0.05,
+        "mean_alpha": 0.4,
+        "mean_beta": 0.3,
+        "mean_gamma": 0.2,
+    }
+
+    hardened = _harden_summary_ratios(summary)
+
+    # Backfilled bands should match means
+    assert hardened["delta"] == 0.05
+    assert hardened["theta"] == 0.05
+    assert hardened["alpha"] == 0.4
+    assert hardened["beta"] == 0.3
+    assert hardened["gamma"] == 0.2
+
+    total = 0.05 + 0.05 + 0.4 + 0.3 + 0.2
+    slow = 0.05 + 0.05           # delta + theta
+    fast = 0.3 + 0.2             # beta + gamma
+    alpha_beta = 0.4 + 0.3
+
+    assert hardened["slow_over_total"] == pytest.approx(slow / total)
+    assert hardened["fast_over_total"] == pytest.approx(fast / total)
+    assert hardened["alpha_over_alpha_beta"] == pytest.approx(0.4 / alpha_beta)
+
+    # Case 2: fast-band-heavy profile (mirrors artifact-likely classifier test)
+    fast_heavy = {
+        "delta": 0.05,
+        "theta": 0.05,
+        "alpha": 0.1,
+        "beta": 0.4,
+        "gamma": 0.4,
+    }
+
+    fast_hardened = _harden_summary_ratios(fast_heavy)
+
+    total_fast = 0.05 + 0.05 + 0.1 + 0.4 + 0.4
+    slow_fast = 0.05 + 0.05
+    fast_fast = 0.4 + 0.4
+    alpha_beta_fast = 0.1 + 0.4
+
+    assert fast_hardened["slow_over_total"] == pytest.approx(slow_fast / total_fast)
+    assert fast_hardened["fast_over_total"] == pytest.approx(fast_fast / total_fast)
+    assert fast_hardened["alpha_over_alpha_beta"] == pytest.approx(0.1 / alpha_beta_fast)
+
+    # Case 3: zero total power -> ratios should fall back to 0.0
+    zero_summary = {
+        "delta": 0.0,
+        "theta": 0.0,
+        "alpha": 0.0,
+        "beta": 0.0,
+        "gamma": 0.0,
+    }
+
+    zero_hardened = _harden_summary_ratios(zero_summary)
+
+    assert zero_hardened["slow_over_total"] == 0.0
+    assert zero_hardened["fast_over_total"] == 0.0
+    assert zero_hardened["alpha_over_alpha_beta"] == 0.0
 def test_recording_metadata_falls_back_without_manifest(tmp_path):
     from neurolink_v2.domain.session.analysis_router import _recording_metadata_for_session
 
