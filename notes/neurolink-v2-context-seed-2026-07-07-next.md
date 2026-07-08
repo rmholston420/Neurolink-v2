@@ -11,6 +11,7 @@ uvicorn neurolink_v2.main:app --reload --port 8008
 ```
 
 ## Verified baseline at handoff
+
 The current baseline is verified and stable:
 
 - Backend tests pass: `pytest -q` → `25 passed`
@@ -31,6 +32,8 @@ The current baseline is verified and stable:
 - Session-review artifact links exist
 - Frontend session cards show a `Short recording` badge when the backend marks a session as short
 - Frontend session history cards now also show `Metadata: heuristic` only for fallback-based legacy metadata
+- Session history cards now show a `Reviewing` badge for the currently loaded review target
+- The selected session-history review action now reads `In review`
 - Session history summary detail panels now render compact chips for primary channel, alpha/(alpha+beta), fast/total, and slow/total, with guidance retained below the chip row
 - Session history recording metadata detail panels now render compact chips for duration, EEG packets, and `Metadata: heuristic fallback` only for fallback-derived metadata
 - Frontend now has minimal Vitest + Testing Library UI test infrastructure
@@ -42,8 +45,10 @@ The current baseline is verified and stable:
 - Review-time `Recording context` renders metadata provenance as `persisted manifest`, `heuristic fallback`, or `unknown`
 
 ## Latest relevant commits
+
 Latest pushed commits before this handoff:
 
+- `0c5fc41` — Clarify active session review state
 - `e517d71` — Compact session history detail chips
 - `0226312` — Clarify session history review action
 - `d1dc16e` — Improve live console status bar
@@ -123,23 +128,26 @@ These rules are non-optional for every future Neurolink-v2 session:
 10. Use exact, paste-ready shell commands only.
 
 ## Best next objective
-Next slice: continue live console ergonomics with one additional low-risk review/history scanability improvement, starting from a fresh inspection of the exact `frontend/src/main.jsx` review and session-history rendering blocks.
+
+Next slice: optionally continue review/history ergonomics with one additional low-risk scanability pass, most likely tighter artifact-link grouping in session history, starting from a fresh inspection of the exact `frontend/src/main.jsx` history action and artifact rows.
 
 ## Why this is the best next slice
-- The compact detail chip improvement is now shipped, but the review/history area still has room for one more small scanability pass.
+
+- The active reviewed-session state treatment is now clearer, and the next remaining low-risk polish candidate is artifact-link grouping in history cards.
 - This stays on the same validated frontend ergonomics track instead of opening a new backend or device-risky thread.
-- The repo is currently in a clean, fully verified state, which makes one more tightly scoped UI polish slice the safest next step.
+- The repo is currently in a clean, fully verified state after the review-state tweak, which keeps another tightly scoped UI polish slice safe if desired.
 
 ## Exact next-step instructions
+
 1. Start with the session verification block in the permanent workflow policy.
 2. Inspect the exact current `frontend/src/main.jsx` sections for `Latest session review` and `Session history` using `grep` and `sed` before proposing any patch.
-3. Choose only one focused scanability improvement that is not already shipped, such as tighter grouping of artifact links or a clearer reviewed-session state treatment.
+3. If continuing, choose only one focused scanability improvement that is not already shipped, with tighter grouping of artifact links now the leading candidate after the reviewed-session state treatment shipped.
 4. Update or extend frontend UI tests only if the visible accessible text or rendered semantics change.
 5. After the slice, rerun:
-   ```bash
-   npm --prefix frontend run test:run
-   npm --prefix frontend run build
-   pytest -q
-   git status
-   ```
+  ```bash
+  npm --prefix frontend run test:run
+  npm --prefix frontend run build
+  pytest -q
+  git status
+  ```
 6. Update this note again if the verified baseline, latest commits, or next objective changed.
