@@ -41,6 +41,14 @@ const QUALITY_STYLES = {
   unknown: { label: 'unknown', bg: 'rgba(148, 163, 184, 0.16)', border: 'rgba(148, 163, 184, 0.45)', color: '#cbd5e1' },
 }
 
+function getStreamHealthStyle(status) {
+  const key = String(status || '').toLowerCase();
+  if (key === 'running' || key === 'active' || key === 'live') return QUALITY_STYLES.good;
+  if (key === 'idle' || key === 'stopped') return QUALITY_STYLES.warn;
+  return QUALITY_STYLES.unknown;
+}
+
+
 function normalizeBandEntry(entry) {
   if (!entry || typeof entry !== 'object') return null
 
@@ -844,6 +852,40 @@ export function App() {
         Domain-integrated Muse Athena console using the existing FastAPI device and stream routes.
       </p>
 
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        <span style={detailChipBase}>
+          <strong style={{ fontWeight: 600 }}>Device</strong>
+          <span>{deviceStatus?.has_board ? 'connected' : 'not connected'}</span>
+        </span>
+
+        <span
+          style={{
+            ...detailChipBase,
+            background: getStreamHealthStyle(streamStatus).bg,
+            border: `1px solid ${getStreamHealthStyle(streamStatus).border}`,
+            color: getStreamHealthStyle(streamStatus).color,
+          }}
+        >
+          <strong style={{ fontWeight: 600 }}>Stream</strong>
+          <span>{streamStatus}</span>
+        </span>
+
+        <span style={detailChipBase}>
+          <strong style={{ fontWeight: 600 }}>Recording</strong>
+          <span>{recordingState.recording ? 'active' : 'idle'}</span>
+        </span>
+
+        <span style={detailChipBase}>
+          <strong style={{ fontWeight: 600 }}>Optical</strong>
+          <span>{opticalSampleCount > 0 ? 'live' : 'no frames'}</span>
+        </span>
+
+        <span style={detailChipBase}>
+          <strong style={{ fontWeight: 600 }}>IMU</strong>
+          <span>{imuSampleCount > 0 ? 'live' : 'no frames'}</span>
+        </span>
+      </div>
+
       <section style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <button onClick={scan}>Scan</button>
         <button onClick={connect}>Connect</button>
@@ -866,11 +908,32 @@ export function App() {
           </p>
         </div>
         <div style={card}>
-          <h2>Live counts</h2>
-          <p>EEG samples: {eegSampleCount}</p>
-          <p>Optical samples: {opticalSampleCount}</p>
-          <p>IMU samples: {imuSampleCount}</p>
-        </div>
+            <h2>Live counts</h2>
+            <p>EEG samples: {eegSampleCount}</p>
+            <p>Optical samples: {opticalSampleCount}</p>
+            <p>IMU samples: {imuSampleCount}</p>
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <span
+                style={{
+                  ...detailChipBase,
+                  background: getStreamHealthStyle(streamStatus).bg,
+                  border: `1px solid ${getStreamHealthStyle(streamStatus).border}`,
+                  color: getStreamHealthStyle(streamStatus).color,
+                }}
+              >
+                <strong style={{ fontWeight: 600 }}>Stream health</strong>
+                <span>{streamStatus}</span>
+              </span>
+              <span style={detailChipBase}>
+                <strong style={{ fontWeight: 600 }}>Optical</strong>
+                <span>{opticalSampleCount > 0 ? 'live' : 'no frames'}</span>
+              </span>
+              <span style={detailChipBase}>
+                <strong style={{ fontWeight: 600 }}>IMU</strong>
+                <span>{imuSampleCount > 0 ? 'live' : 'no frames'}</span>
+              </span>
+            </div>
+          </div>
         <div style={card}>
           <h2>EEG channels</h2>
           <p>{eegChannels.length ? eegChannels.join(', ') : 'No channels yet'}</p>
@@ -890,6 +953,18 @@ export function App() {
             Live board battery estimate from the current Athena stream.
           </p>
         </div>
+          <div style={card}>
+            <h2 style={{ marginTop: 0 }}>Aux sensors</h2>
+            <p style={{ marginTop: 0, color: '#9eb0d1' }}>
+              Live optical and motion telemetry from the current Athena stream.
+            </p>
+            <p>Optical samples: {opticalSampleCount}</p>
+            <p>IMU samples: {imuSampleCount}</p>
+            <p style={{ marginTop: 6, color: '#9eb0d1', fontSize: 12 }}>
+              Optical: {opticalSampleCount > 0 ? 'live' : 'no frames yet'};
+              IMU: {imuSampleCount > 0 ? 'live' : 'no frames yet'}.
+            </p>
+          </div>
 
         <div style={card}>
           <h2 style={{ marginTop: 0 }}>Signal snapshot</h2>
