@@ -30,6 +30,7 @@ The current baseline is verified and stable:
 - Latest-session analysis works
 - Analyze-by-name works
 - Session history listing works
+- Session history now shows clearer loading and empty-state guidance for review workflow startup
 - Session-review artifact links exist
 - Frontend session cards show a `Short recording` badge when the backend marks a session as short
 - Frontend session history cards now also show `Metadata: heuristic` only for fallback-based legacy metadata
@@ -50,11 +51,11 @@ The current baseline is verified and stable:
 
 Latest pushed commits before this handoff:
 
+- `58f6c39` — Clarify session history loading states
 - `c55b9aa` — Compress live signal reason display
 - `af1dbbf` — Tighten session history artifact row
 - `0c5fc41` — Clarify active session review state
 - `e517d71` — Compact session history detail chips
-- `0226312` — Clarify session history review action
 
 ## Permanent workflow policy
 These rules are non-optional for every future Neurolink-v2 session:
@@ -131,13 +132,13 @@ These rules are non-optional for every future Neurolink-v2 session:
 
 ## Best next objective
 
-Next slice: pause unless a new concrete usability issue appears, or begin a different low-risk frontend ergonomics pass from a fresh inspection of the exact rendered path, with live-console density and review/history scanability both in a materially improved state.
+Next slice: pause unless a new concrete usability issue appears, or begin a different low-risk frontend ergonomics pass from a fresh inspection of the exact rendered path, with recent work now covering review/history scanability, live-console density, and session-history state clarity.
 
 ## Why this is the best next slice
 
-- The recent frontend ergonomics work has now improved both live-console density and review/history scanability through several small validated slices.
+- The recent frontend ergonomics work now spans scanability, density, and state clarity through several small validated slices.
 - This is a good stopping point before diminishing-return polish work accumulates in the same UI areas.
-- The repo is currently in a clean, fully verified state after the latest live-console refinement, which makes preserving this baseline preferable to forcing another tweak immediately.
+- The repo is currently in a clean, fully verified state after the latest session-history clarity refinement, which makes preserving this baseline preferable to forcing another tweak immediately.
 
 ## Exact next-step instructions
 
