@@ -1541,6 +1541,21 @@ export function App() {
                       >
                         {session.analyzed ? 'Analyzed' : 'Recorded only'}
                       </div>
+                      {selectedSessionName === session.session_name ? (
+                        <div
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            background: 'rgba(96,165,250,0.14)',
+                            border: '1px solid rgba(96,165,250,0.35)',
+                            color: '#bfdbfe',
+                          }}
+                        >
+                          Reviewing
+                        </div>
+                      ) : null}
                       {session.recording_label === 'short' ? (
                         <div
                           style={{
@@ -1647,7 +1662,7 @@ export function App() {
                           onClick={() => viewSession(session)}
                           disabled={selectedSessionName === session.session_name}
                         >
-                          {selectedSessionName === session.session_name ? 'Review open' : 'Open review'}
+                          {selectedSessionName === session.session_name ? 'In review' : 'Open review'}
                         </button>
                         <button
                           onClick={() => analyzeSessionByName(session.session_name)}
