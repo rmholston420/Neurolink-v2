@@ -1682,11 +1682,20 @@ export function App() {
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 8,
+                          gap: 6,
                           flexWrap: 'wrap',
                         }}
                       >
-                        <span style={{ color: '#9eb0d1', fontSize: 12 }}>Artifacts:</span>
+                        <span
+                          style={{
+                            ...detailChipBase,
+                            color: '#9eb0d1',
+                            background: 'rgba(158,176,209,0.08)',
+                            border: '1px solid rgba(158,176,209,0.18)',
+                          }}
+                        >
+                          Artifacts
+                        </span>
 
                         {session.bands_png && (
                           <a
