@@ -1514,13 +1514,23 @@ export function App() {
             <button onClick={loadSessionHistory}>Refresh history</button>
           </div>
 
-          {sessionHistoryStatus === 'loading' && <p>Loading session history…</p>}
+          {sessionHistoryStatus === 'loading' && (
+            <div style={{ color: '#9eb0d1', lineHeight: 1.5 }}>
+              <p style={{ margin: 0 }}>Loading session history…</p>
+              <p style={{ margin: '4px 0 0' }}>Checking recorded sessions and review artifacts.</p>
+            </div>
+          )}
           {sessionHistoryStatus === 'error' && (
             <p style={{ color: '#f87171' }}>Could not load session history.</p>
           )}
 
           {sessionHistoryStatus !== 'loading' && sessionHistory.length === 0 ? (
-            <p style={{ color: '#9eb0d1' }}>No recorded sessions found yet.</p>
+            <div style={{ color: '#9eb0d1', lineHeight: 1.5 }}>
+              <p style={{ margin: 0 }}>No recorded sessions found yet.</p>
+              <p style={{ margin: '4px 0 0' }}>
+                Start a recording, then stop it to create a reviewable session.
+              </p>
+            </div>
           ) : (
             <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
               {sessionHistory.map((session) => (
