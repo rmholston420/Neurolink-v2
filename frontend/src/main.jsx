@@ -859,6 +859,11 @@ export function App() {
           <p>Has board: {String(deviceStatus?.has_board || false)}</p>
           <p>Preset: {deviceStatus?.preset || 'n/a'}</p>
           <p>Selected address: {selectedAddress || 'auto'}</p>
+          <p style={{ marginTop: 6, color: '#9eb0d1', fontSize: 12 }}>
+            {selectedAddress
+              ? 'Connect will target the selected headset address.'
+              : 'Auto will use the first discovered Athena address when available.'}
+          </p>
         </div>
         <div style={card}>
           <h2>Live counts</h2>
