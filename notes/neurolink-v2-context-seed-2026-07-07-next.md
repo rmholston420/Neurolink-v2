@@ -25,6 +25,7 @@ The current baseline is verified and stable:
 - Per-channel band powers, `band_debug`, `band_quality`, and operator guidance are shown in the frontend live console
 - Live operator channel cards now render signal reason as a compact chip above operator guidance
 - Live Athena channel labels map correctly to `TP9`, `AF7`, `AF8`, and `TP10`
+- Device card now explains automatic versus explicitly selected headset targeting
 - Session recording works
 - Recorder persists a per-session manifest adjacent to each session JSONL
 - Latest-session analysis works
@@ -51,11 +52,11 @@ The current baseline is verified and stable:
 
 Latest pushed commits before this handoff:
 
+- `726e9cb` — Clarify device selection targeting
 - `58f6c39` — Clarify session history loading states
 - `c55b9aa` — Compress live signal reason display
 - `af1dbbf` — Tighten session history artifact row
 - `0c5fc41` — Clarify active session review state
-- `e517d71` — Compact session history detail chips
 
 ## Permanent workflow policy
 These rules are non-optional for every future Neurolink-v2 session:
@@ -132,13 +133,13 @@ These rules are non-optional for every future Neurolink-v2 session:
 
 ## Best next objective
 
-Next slice: pause unless a new concrete usability issue appears, or begin a different low-risk frontend ergonomics pass from a fresh inspection of the exact rendered path, with recent work now covering review/history scanability, live-console density, and session-history state clarity.
+Next slice: pause unless a new concrete usability issue appears, or begin a different low-risk frontend ergonomics pass from a fresh inspection of the exact rendered path, with recent work now covering device-selection clarity, live-console density, and review/history scanability and state clarity.
 
 ## Why this is the best next slice
 
-- The recent frontend ergonomics work now spans scanability, density, and state clarity through several small validated slices.
+- The recent frontend ergonomics work now spans device-selection clarity, live-console density, and review/history scanability and state clarity through several small validated slices.
 - This is a good stopping point before diminishing-return polish work accumulates in the same UI areas.
-- The repo is currently in a clean, fully verified state after the latest session-history clarity refinement, which makes preserving this baseline preferable to forcing another tweak immediately.
+- The repo is currently in a clean, fully verified state after the latest device-selection clarification, which makes preserving this baseline preferable to forcing another tweak immediately.
 
 ## Exact next-step instructions
 
