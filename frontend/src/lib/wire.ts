@@ -51,17 +51,16 @@ export interface EegFrame {
 
 export interface OpticalFrame {
   type: 'optical'
-  ts?: number[]
   timestamps?: number[]
-  data?: Record<string, number[]>
+  optical?: Record<string, number[]>
   battery?: number | null
 }
 
 export interface ImuFrame {
   type: 'imu'
-  ts?: number[]
   timestamps?: number[]
-  data?: Record<string, number[]>
+  accel?: { x: number[]; y: number[]; z: number[] }
+  gyro?: { x: number[]; y: number[]; z: number[] }
   battery?: number | null
 }
 
