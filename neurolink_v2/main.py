@@ -12,6 +12,8 @@ from neurolink_v2.domain.stream.router import router as stream_router
 from neurolink_v2.domain.stream.recording_router import router as stream_recording_router
 from neurolink_v2.domain.session.router import router as session_router
 from neurolink_v2.domain.session.analysis_router import router as session_analysis_router
+from neurolink_v2.domain.meditation.router import router as meditation_router
+from neurolink_v2.domain.meditation.practice_tracker.router import router as practice_router
 from neurolink_v2.domain.session.db import init_db
 
 
@@ -27,7 +29,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Neurolink-v2",
         version="0.1.0",
-        description="Real-time EEG + fNIRS streaming for the Muse S Athena.",
+        description="Real-time EEG + fNIRS streaming for the Muse Athena.",
         lifespan=lifespan,
     )
 
@@ -44,6 +46,8 @@ def create_app() -> FastAPI:
     app.include_router(stream_recording_router, prefix="/api/stream", tags=["Stream Recording"])
     app.include_router(session_router, prefix="/api/sessions", tags=["Sessions"])
     app.include_router(session_analysis_router, prefix="/api/sessions", tags=["Session Analysis"])
+    app.include_router(meditation_router, prefix="/api/meditation", tags=["Meditation"])
+    app.include_router(practice_router, prefix="/api/practice", tags=["Practice Tracker"])
 
     return app
 

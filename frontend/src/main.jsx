@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { MeditationPanel } from './components/MeditationPanel.jsx'
 
 const card = {
   background: '#131c31',
@@ -490,6 +491,26 @@ export function App() {
     [latest, deviceStatus]
   )
 
+  // Mean band powers across channels feed the meditation-domain panel, which
+  // mirrors the backend s-space classifier for a no-round-trip live readout.
+  const meditationBands = useMemo(() => {
+    const channels = Object.values(flattenedBandPowers)
+    if (!channels.length) return {}
+    const sums = { alpha: 0, theta: 0, beta: 0 }
+    for (const bands of channels) {
+      sums.alpha += Number(bands.alpha) || 0
+      sums.theta += Number(bands.theta) || 0
+      sums.beta += Number(bands.beta) || 0
+    }
+    return {
+      alpha: sums.alpha / channels.length,
+      theta: sums.theta / channels.length,
+      beta: sums.beta / channels.length,
+    }
+  }, [flattenedBandPowers])
+
+  const meditationFaa = latest.eeg?.pipeline?.faa ?? null
+
   const qualityByChannel = useMemo(
     () => latest.eeg?.band_quality || {},
     [latest]
@@ -885,6 +906,8 @@ export function App() {
           <span>{imuSampleCount > 0 ? 'live' : 'no frames'}</span>
         </span>
       </div>
+
+      <MeditationPanel bands={meditationBands} faa={meditationFaa} />
 
       <section style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <button onClick={scan}>Scan</button>
