@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import Integer, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import AsyncSessionLocal
@@ -188,6 +188,81 @@ async def export_session(
             for n in notes
         ],
     }
+
+
+@router.get("/{session_id}/summary")
+async def session_summary(session_id: int, db: AsyncSession = Depends(get_db)):
+    """Cheap per-session aggregates for the Journal history rows.
+
+    Computes frame count, EA-1-eligible seconds (distinct integer ``ts``
+    seconds carrying an eligible frame), the dominant alchemical stage (the
+    stage tagged on the most frames), and note / wandering counts — all via
+    aggregate queries so the history list never has to fetch full frame data.
+    Fields that can't be computed (no frames, no tagged stage) are omitted.
+    """
+    session = await db.get(SessionModel, session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    frame_count = (
+        await db.execute(
+            select(func.count()).select_from(SessionFrame).where(
+                SessionFrame.session_id == session_id
+            )
+        )
+    ).scalar_one()
+
+    eligible_seconds = (
+        await db.execute(
+            select(func.count(func.distinct(func.cast(SessionFrame.ts, Integer)))).where(
+                SessionFrame.session_id == session_id,
+                SessionFrame.ea1_eligible == 1,
+            )
+        )
+    ).scalar_one()
+
+    dominant = (
+        await db.execute(
+            select(SessionFrame.stage, func.count().label("n"))
+            .where(SessionFrame.session_id == session_id, SessionFrame.stage.is_not(None))
+            .group_by(SessionFrame.stage)
+            .order_by(func.count().desc())
+            .limit(1)
+        )
+    ).first()
+
+    notes_count = (
+        await db.execute(
+            select(func.count()).select_from(JournalNote).where(
+                JournalNote.session_id == session_id
+            )
+        )
+    ).scalar_one()
+
+    wandering_count = (
+        await db.execute(
+            select(func.count()).select_from(WanderingEvent).where(
+                WanderingEvent.session_id == session_id
+            )
+        )
+    ).scalar_one()
+
+    out: dict = {
+        "id": session.id,
+        "label": session.label,
+        "preset": session.preset,
+        "started_at": session.started_at.isoformat() if session.started_at else None,
+        "ended_at": session.ended_at.isoformat() if session.ended_at else None,
+        "duration_s": session.duration_s,
+        "frame_count": frame_count,
+        "notes_count": notes_count,
+        "wandering_count": wandering_count,
+    }
+    if frame_count:
+        out["ea1_eligible_seconds"] = eligible_seconds
+    if dominant is not None:
+        out["dominant_stage"] = dominant[0]
+    return out
 
 
 @router.get("/{session_id}")

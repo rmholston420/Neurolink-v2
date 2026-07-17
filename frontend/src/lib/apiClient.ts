@@ -64,10 +64,25 @@ export interface WanderingEventRecord {
   created_at: string
 }
 
+export interface SessionAggregate {
+  id: number
+  label: string
+  preset: string
+  started_at: string | null
+  ended_at: string | null
+  duration_s: number | null
+  frame_count: number
+  notes_count: number
+  wandering_count: number
+  ea1_eligible_seconds?: number
+  dominant_stage?: string
+}
+
 export const sessionApi = {
   list: () => getJson<SessionSummary[]>('/sessions/'),
   historyList: () => getJson<{ status: string; sessions: unknown[] }>('/sessions/history/list'),
   detail: (id: string | number) => getJson<Record<string, unknown>>(`/sessions/${encodeURIComponent(String(id))}`),
+  summary: (id: string | number) => getJson<SessionAggregate>(`/sessions/${encodeURIComponent(String(id))}/summary`),
   analyzeLatest: () => postJson<Record<string, unknown>>('/sessions/analyze-latest'),
   analyzeByName: (name: string) => postJson<Record<string, unknown>>(`/sessions/analyze-by-name/${encodeURIComponent(name)}`),
   artifactUrl: (filename: string) => `${API_BASE}/sessions/artifacts/${encodeURIComponent(filename)}`,

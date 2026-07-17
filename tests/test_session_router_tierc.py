@@ -109,3 +109,39 @@ def test_export_missing_session_404(tmp_path):
     client, _ = _client_and_engine(tmp_path)
     r = client.get("/api/sessions/999/export?format=json")
     assert r.status_code == 404
+
+
+def test_summary_aggregates(tmp_path):
+    client, SessionLocal = _client_and_engine(tmp_path)
+    sid = _seed_session(SessionLocal)
+
+    async def _add_stage_frames():
+        async with SessionLocal() as db:
+            db.add_all(
+                [
+                    SessionFrame(session_id=sid, ts=2.0, region="H", stage="Rubedo", ea1_eligible=1),
+                    SessionFrame(session_id=sid, ts=2.4, region="H", stage="Rubedo", ea1_eligible=1),
+                    SessionFrame(session_id=sid, ts=3.0, region="H", stage="Rubedo", ea1_eligible=1),
+                    SessionFrame(session_id=sid, ts=4.0, region="H", stage="Albedo", ea1_eligible=0),
+                ]
+            )
+            await db.commit()
+
+    asyncio.run(_add_stage_frames())
+
+    r = client.get(f"/api/sessions/{sid}/summary")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["id"] == sid
+    assert body["frame_count"] == 6  # 2 seed + 4 added
+    # eligible frames at ts 2.0, 2.4, 3.0 -> distinct integer seconds {2, 3}
+    assert body["ea1_eligible_seconds"] == 2
+    assert body["dominant_stage"] == "Rubedo"
+    assert body["notes_count"] == 0
+    assert body["wandering_count"] == 0
+
+
+def test_summary_missing_session_404(tmp_path):
+    client, _ = _client_and_engine(tmp_path)
+    r = client.get("/api/sessions/999/summary")
+    assert r.status_code == 404
