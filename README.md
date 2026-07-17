@@ -116,3 +116,16 @@ Run on Collosus (Kubuntu, Python 3.11):
 uvicorn neurolink_v2.main:app --reload --port 8008
 npm --prefix frontend run dev     # or: npm --prefix frontend run build
 ```
+
+### Meditation domain (ported from MuseLink)
+
+- `neurolink_v2/domain/meditation/` — EA-1 eligibility scoring, s-space /
+  alchemical-stage classifier, and a practice tracker (LCI history + adaptive
+  technique/duration recommender). Athena-only; no legacy BLE code paths.
+- Routes: `/api/meditation/*` (classify, calibration) and `/api/practice/*`
+  (LCI, recommend).
+- `frontend/src/components/MeditationPanel.jsx` renders the live meditation
+  state (region, stage, overlay, engagement, integration coverage).
+- SQLite tables `session_frames` + `calibrations` extend the existing `sessions`
+  table via one Alembic migration. Apply with `alembic upgrade head`. See
+  `docs/ports/feature-muselink-port.md`.
