@@ -32,6 +32,7 @@ from neurolink_v2.domain.signal.quality import classify_bandpower_quality
 from neurolink_v2.domain.signal.service import signal_service
 from neurolink_v2.domain.signal.stage0.live import live_stage0
 from neurolink_v2.domain.stream import recorder
+from neurolink_v2.domain.stream.mode import stream_mode
 
 log = logging.getLogger(__name__)
 
@@ -127,7 +128,9 @@ class StreamBroadcaster:
                             debug = compute_band_powers_debug(samples)
                             band_debug[name] = debug
                             band_quality[name] = classify_bandpower_quality(debug)
+                    mode = stream_mode.mode
                     snap["type"] = "eeg"
+                    snap["signal_mode"] = mode
                     snap["band_powers"] = band_powers
                     snap["band_debug"] = band_debug
                     snap["band_quality"] = band_quality
@@ -135,7 +138,7 @@ class StreamBroadcaster:
                     # Additive only: a DSP failure must never kill the pump.
                     result = None
                     try:
-                        result = signal_service.process_snapshot(snap)
+                        result = signal_service.process_snapshot(snap, mode=mode)
                         if result is not None:
                             snap["pipeline"] = {
                                 "bands": result.bands.model_dump(),

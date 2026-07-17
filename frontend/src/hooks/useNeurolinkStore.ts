@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNeurolinkWS } from './useNeurolinkWS'
 import { deviceApi, streamApi, meditationApi, ApiError, type MeditationClassifyResult } from '../lib/apiClient'
-import type { DeviceCandidate, LastPairedDevice } from '../lib/wire'
+import type { DeviceCandidate, LastPairedDevice, SignalMode } from '../lib/wire'
 import { flattenBandPowersForDisplay, HISTORY_LIMIT } from '../lib/bandpower.js'
 import {
   sSpaceRegion,
@@ -30,6 +30,20 @@ export interface MeditationDerived {
 
 const EMPTY_BANDS = { alpha: 0, theta: 0, beta: 0, delta: 0, gamma: 0 }
 
+// localStorage key for the persisted signal-mode selection.
+const SIGNAL_MODE_KEY = 'neurolink.signal_mode'
+const SIGNAL_MODES: readonly SignalMode[] = ['meditation', 'notch', 'raw']
+
+function readStoredSignalMode(): SignalMode {
+  try {
+    const v = localStorage.getItem(SIGNAL_MODE_KEY)
+    if (v && (SIGNAL_MODES as readonly string[]).includes(v)) return v as SignalMode
+  } catch {
+    /* localStorage unavailable (SSR/tests) */
+  }
+  return 'meditation'
+}
+
 // Fit-check thresholds: all channels at/below this contact score for this many
 // seconds triggers the "adjust headset fit" overlay.
 const FIT_CHECK_CONTACT_MAX = 0.05
@@ -43,6 +57,7 @@ export function useNeurolinkStore() {
   const [recording, setRecording] = useState<{ recording: boolean; path: string }>({ recording: false, path: '' })
   const [bandHistory, setBandHistory] = useState<Array<Record<string, number>>>([])
   const [streamHealthHistory, setStreamHealthHistory] = useState<number[]>([])
+  const [signalMode, setSignalModeState] = useState<SignalMode>(readStoredSignalMode)
   const lastEegRef = useRef<unknown>(null)
 
   // ---- Device control (scan / connect / disconnect) ---------------------
@@ -88,6 +103,37 @@ export function useNeurolinkStore() {
       /* backend offline; leave prior state */
     }
   }, [])
+
+  // ---- Signal mode (Meditation / Notch / Raw) ---------------------------
+  // setSignalMode fires the API call, then updates local state + localStorage
+  // on success so the selection survives reloads and drives page behaviour.
+  const setSignalMode = useCallback(async (mode: SignalMode) => {
+    try {
+      const r = await streamApi.setMode(mode)
+      const next = r.mode ?? mode
+      setSignalModeState(next)
+      try {
+        localStorage.setItem(SIGNAL_MODE_KEY, next)
+      } catch {
+        /* localStorage unavailable */
+      }
+    } catch {
+      /* backend offline; keep prior mode so the UI stays truthful */
+    }
+  }, [])
+
+  // On mount, push the persisted selection to the backend so it matches the UI.
+  useEffect(() => {
+    void setSignalMode(readStoredSignalMode())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Re-sync the mode whenever the WebSocket (re)connects — a backend restart
+  // resets to meditation, so the client re-asserts its persisted selection.
+  useEffect(() => {
+    if (wsStatus === 'open') void setSignalMode(readStoredSignalMode())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wsStatus])
 
   // Device status polls every 2 s, stream health every 1 s (per the brief).
   useEffect(() => {
@@ -171,6 +217,13 @@ export function useNeurolinkStore() {
   const [poorFit, setPoorFit] = useState(false)
   const poorFitStartRef = useRef<number | null>(null)
   useEffect(() => {
+    // Fit-check overlay only fires in Meditation mode: in raw/notch the
+    // oscilloscope traces are the direct signal feedback, so no overlay.
+    if (signalMode !== 'meditation') {
+      poorFitStartRef.current = null
+      setPoorFit(false)
+      return
+    }
     const vals = Object.values(contact)
     const allLow = vals.length > 0 && vals.every((v) => v <= FIT_CHECK_CONTACT_MAX)
     if (!allLow) {
@@ -181,7 +234,7 @@ export function useNeurolinkStore() {
     if (poorFitStartRef.current == null) poorFitStartRef.current = Date.now()
     const elapsedS = (Date.now() - poorFitStartRef.current) / 1000
     setPoorFit(elapsedS >= FIT_CHECK_SECS)
-  }, [contact])
+  }, [contact, signalMode])
   const impedance: Record<string, number> = useMemo(() => frames.eeg?.impedance || {}, [frames.eeg])
   const focusState = frames.eeg?.focus_state ?? null
   const focusScore = frames.eeg?.focus_score ?? null
@@ -325,6 +378,8 @@ export function useNeurolinkStore() {
     lastPaired, scan, clearDeviceError: () => setDeviceError(null),
     // Fit check
     poorFit,
+    // Signal mode
+    signalMode, setSignalMode,
   }
 }
 

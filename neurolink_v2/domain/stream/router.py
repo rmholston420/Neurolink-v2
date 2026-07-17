@@ -2,8 +2,10 @@
 
 from fastapi import APIRouter, WebSocket
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from .broadcaster import broadcaster
+from .mode import VALID_SIGNAL_MODES, stream_mode
 from neurolink_v2.domain.device.manager import device_manager
 from neurolink_v2.domain.signal.dsp.models import StreamHealthPayload
 from neurolink_v2.domain.signal.service import signal_service
@@ -11,10 +13,42 @@ from neurolink_v2.domain.signal.service import signal_service
 router = APIRouter()
 
 
+class SignalModeRequest(BaseModel):
+    """Body for POST /mode: the requested signal-processing mode."""
+
+    mode: str
+
+
 @router.get("/health", response_model=StreamHealthPayload)
 async def stream_health() -> StreamHealthPayload:
     """Live stream-quality metrics from the DSP pipeline (StreamHealth)."""
     return signal_service.health_payload()
+
+
+@router.post("/mode")
+async def set_signal_mode(req: SignalModeRequest):
+    """Set the live signal-processing mode.
+
+    Idempotent: posting the current mode is a no-op that still returns 200 with
+    the active mode. Invalid modes return 400. State is in-memory and resets to
+    ``meditation`` on backend restart.
+    """
+    try:
+        current = stream_mode.set_mode(req.mode)
+    except ValueError:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": f"Invalid mode '{req.mode}'. Must be one of {list(VALID_SIGNAL_MODES)}."
+            },
+        )
+    return {"mode": current}
+
+
+@router.get("/mode")
+async def get_signal_mode():
+    """Return the current signal-processing mode."""
+    return {"mode": stream_mode.mode}
 
 
 @router.post("/start")

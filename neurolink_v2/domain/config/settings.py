@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     # --- Transport backend selection ("brainflow" | "lsl") ---
     transport: str = "brainflow"
 
+    # --- Signal / DSP ---
+    # Mains frequency for the notch filter used in signal-mode "notch" (Hz).
+    # US default 60; set MAINS_HZ=50 for 50 Hz regions. Not auto-detected.
+    mains_hz: float = 60.0
+
     # --- Server ---
     api_host: str = "0.0.0.0"
     api_port: int = 8000

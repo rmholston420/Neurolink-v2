@@ -1,7 +1,7 @@
 // Thin typed wrappers over the v2 REST surface. All URLs are config-driven via
 // API_BASE (VITE_API_BASE). Every function maps to a real backend endpoint.
 import { API_BASE, API_ORIGIN } from './api.js'
-import type { DeviceStatus, StreamHealth, DeviceCandidate, LastPairedDevice } from './wire'
+import type { DeviceStatus, StreamHealth, DeviceCandidate, LastPairedDevice, SignalMode } from './wire'
 
 // Thrown on any non-2xx response so callers can branch on HTTP status. The
 // backend returns machine-readable 4xx/5xx codes (409 already-connected /
@@ -81,6 +81,8 @@ export const streamApi = {
   recordingState: () => getJson<{ recording: boolean; path?: string }>('/stream/recording'),
   startRecording: () => postJson<{ recording: boolean; path?: string }>('/stream/recording/start'),
   stopRecording: () => postJson<{ recording: boolean; path?: string }>('/stream/recording/stop'),
+  setMode: (mode: SignalMode) => postJson<{ mode: SignalMode }>('/stream/mode', { mode }),
+  getMode: () => getJson<{ mode: SignalMode }>('/stream/mode'),
 }
 
 // ---- Sessions -----------------------------------------------------------

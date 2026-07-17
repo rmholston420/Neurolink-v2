@@ -2,6 +2,10 @@
 // neurolink_v2/domain/stream/broadcaster.py and the DSP pipeline payload it
 // attaches to EEG frames. See docs/ports/wire-format-sample.json for samples.
 
+// Signal-processing mode selected via the top-nav segmented control and
+// POST /api/stream/mode. See neurolink_v2/domain/stream/mode.py.
+export type SignalMode = 'meditation' | 'notch' | 'raw'
+
 export interface BandPowers {
   delta: number
   theta: number
@@ -75,6 +79,8 @@ export interface EegFrame {
   type: 'eeg'
   ts?: number[]
   timestamps?: number[]
+  // Active signal-processing mode this frame was produced under.
+  signal_mode?: SignalMode
   eeg?: Record<string, number[]>
   channel_names?: string[]
   band_powers?: Record<string, Partial<BandPowers>>
@@ -144,4 +150,5 @@ export interface DeviceStatus {
   preset?: string
   transport_metadata?: Record<string, string>
   battery?: number | null
+  signal_mode?: SignalMode
 }

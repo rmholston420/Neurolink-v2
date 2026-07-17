@@ -21,7 +21,12 @@ export function App() {
 
   return (
     <div className="nl-shell">
-      <TopNav active={tab} onChange={setTab} />
+      <TopNav
+        active={tab}
+        onChange={setTab}
+        signalMode={store.signalMode}
+        onSignalModeChange={store.setSignalMode}
+      />
       <main className="nl-main" role="main">
         {tab === 'practice' && <PracticePage store={store} onGoToSignal={() => setTab('signal')} />}
         {tab === 'signal' && <SignalPage store={store} />}
