@@ -103,6 +103,69 @@ def _fatigue(bands: dict[str, float]) -> float:
     return max(0.0, min(1.0, ratio / 3.0))
 
 
+# Detector artifact taxonomy (7 types) -> UI coaching classes (5 classes).
+# blink   <- BLINK, HORIZONTAL_EOG   (ocular)
+# emg     <- EMG                      (muscle)
+# movement<- MOTION                   (IMU-corroborated head motion)
+# saturation <- ELECTRODE_POP         (railing / impedance transient)
+# drift   <- LINE_NOISE, CARDIAC      (slow / periodic contamination)
+_ARTIFACT_UI_MAP: dict[str, str] = {
+    "BLINK": "blink",
+    "HORIZONTAL_EOG": "blink",
+    "EMG": "emg",
+    "MOTION": "movement",
+    "ELECTRODE_POP": "saturation",
+    "LINE_NOISE": "drift",
+    "CARDIAC": "drift",
+}
+_ARTIFACT_UI_CLASSES: tuple[str, ...] = ("blink", "emg", "movement", "saturation", "drift")
+
+
+def summarize_artifacts(annotations: Sequence | None) -> dict:
+    """Fold the pipeline's per-type artifact annotations into the 5 UI classes.
+
+    Each class carries the *max* confidence [0, 1] observed for the detector
+    types mapped to it this frame; ``score`` is the overall max. A clean frame
+    returns all zeros. ``annotations`` items expose ``artifact_type`` (str name)
+    and ``confidence`` (float), matching ``ArtifactAnnotationPayload``.
+    """
+    classes: dict[str, float] = dict.fromkeys(_ARTIFACT_UI_CLASSES, 0.0)
+    for ann in annotations or []:
+        atype = getattr(ann, "artifact_type", None)
+        ui = _ARTIFACT_UI_MAP.get(atype) if atype else None
+        if ui is None:
+            continue
+        conf = float(getattr(ann, "confidence", 0.0) or 0.0)
+        classes[ui] = max(classes[ui], conf)
+    score = max(classes.values()) if classes else 0.0
+    result = {name: round(classes[name], 3) for name in _ARTIFACT_UI_CLASSES}
+    result["score"] = round(score, 3)
+    return result
+
+
+def summarize_bad_channels(stats: Sequence | None, interpolation_active: bool) -> dict:
+    """Build the structured bad-channel payload from Stage-2 ``ChannelStats``.
+
+    ``flagged`` lists channel names currently marked bad; ``reasons`` maps each
+    to its comma-joined cause (manual / flat_line / noisy); ``interpolation_active``
+    reflects whether spherical-spline interpolation ran this frame.
+    """
+    flagged: list[str] = []
+    reasons: dict[str, str] = {}
+    for s in stats or []:
+        if getattr(s, "is_bad", False):
+            name = getattr(s, "name", None)
+            if name is None:
+                continue
+            flagged.append(name)
+            reasons[name] = s.reason()
+    return {
+        "flagged": flagged,
+        "reasons": reasons,
+        "interpolation_active": bool(interpolation_active),
+    }
+
+
 def compute_frame_metrics(
     eeg_map: dict[str, list[float]] | None,
     channel_names: list[str] | None,

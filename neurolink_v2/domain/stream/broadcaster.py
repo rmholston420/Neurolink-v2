@@ -23,9 +23,14 @@ from fastapi import WebSocket
 from neurolink_v2.domain.device.manager import device_manager
 from neurolink_v2.domain.signal.bandpower import compute_band_powers, compute_band_powers_debug
 from neurolink_v2.domain.signal.frame_hrv import frame_hrv_tracker
-from neurolink_v2.domain.signal.frame_metrics import compute_frame_metrics
+from neurolink_v2.domain.signal.frame_metrics import (
+    compute_frame_metrics,
+    summarize_artifacts,
+    summarize_bad_channels,
+)
 from neurolink_v2.domain.signal.quality import classify_bandpower_quality
 from neurolink_v2.domain.signal.service import signal_service
+from neurolink_v2.domain.signal.stage0.live import live_stage0
 from neurolink_v2.domain.stream import recorder
 
 log = logging.getLogger(__name__)
@@ -137,6 +142,15 @@ class StreamBroadcaster:
                                 "faa": result.faa,
                                 "fmt": result.fmt,
                             }
+                            # Structured, UI-facing sensor-detail fields (Tier C):
+                            # per-artifact-class coaching + per-channel bad state.
+                            snap["artifacts"] = summarize_artifacts(
+                                result.artifact_annotations
+                            )
+                            snap["bad_channels"] = summarize_bad_channels(
+                                signal_service.bad_channel_stats(),
+                                bool(result.bad_channels),
+                            )
                         snap["stream_health"] = signal_service.health_payload().model_dump()
                     except Exception:
                         log.debug("signal pipeline tick failed", exc_info=True)
@@ -151,6 +165,10 @@ class StreamBroadcaster:
                                 bands,
                             )
                         )
+                        # Feed the live Stage-0 guard with real impedance
+                        # estimates so the readiness endpoint reflects actual
+                        # contact quality (never mocked).
+                        live_stage0.update_impedance_kohm(snap.get("impedance"))
                     except Exception:
                         log.debug("frame metrics tick failed", exc_info=True)
                     # Fused HRV + breathing from the cross-pump rolling buffers.

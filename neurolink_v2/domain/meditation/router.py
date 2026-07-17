@@ -24,6 +24,7 @@ from neurolink_v2.domain.meditation.models import (
     IngestPayload,
     MeditationFrame,
 )
+from neurolink_v2.domain.signal.stage0.live import live_stage0
 
 router = APIRouter()
 
@@ -99,3 +100,30 @@ async def save_calibration_endpoint(body: CalibrationSaveRequest):
 async def get_calibration():
     cal = await get_latest_calibration()
     return cal or {}
+
+
+@router.get("/stage0-readiness")
+async def get_stage0_readiness():
+    """Live Stage-0 pre-flight status (impedance / IMU / environment).
+
+    Consumed by the CalibrationPanel pre-flight to decide whether the resting
+    baseline may begin. Impedance reflects real per-channel estimates fed by
+    the EEG pump; environment steps are acknowledged via the endpoint below.
+    """
+    return live_stage0.status_dict()
+
+
+class Stage0AckRequest(BaseModel):
+    step_id: str | None = None
+    all: bool = False
+
+
+@router.post("/stage0-readiness/ack")
+async def ack_stage0_step(body: Stage0AckRequest):
+    """Acknowledge one (or all) environment checklist step(s)."""
+    if body.all:
+        live_stage0.acknowledge_all()
+        return live_stage0.status_dict()
+    if body.step_id and live_stage0.acknowledge(body.step_id):
+        return live_stage0.status_dict()
+    return {"status": "error", "detail": "unknown or missing step_id"}
