@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     muse_preset: str = "p1041"
     muse_low_latency: bool = True
 
+    # --- Transport backend selection ("brainflow" | "lsl") ---
+    transport: str = "brainflow"
+
     # --- Server ---
     api_host: str = "0.0.0.0"
     api_port: int = 8000
