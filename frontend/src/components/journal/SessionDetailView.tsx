@@ -276,7 +276,7 @@ export function SessionDetailView({ sessionId }: { sessionId: number | null }) {
 }
 
 // Recording analysis (JSONL files, distinct from DB sessions) ported from the
-// retired LegacyConsole review surface: analyze-latest + per-file analyze with
+// retired v1 console review surface: analyze-latest + per-file analyze with
 // artifact downloads. Kept in the Journal so provenance/analysis stays reachable.
 function SessionAnalysisPanel() {
   const [recordings, setRecordings] = useState<Array<Record<string, unknown>> | null>(null)
