@@ -45,13 +45,58 @@ export const streamApi = {
 }
 
 // ---- Sessions -----------------------------------------------------------
+export interface SessionSummary {
+  id: number
+  label: string
+  preset: string
+  started_at: string | null
+  ended_at: string | null
+  duration_s: number | null
+}
+
+export interface WanderingEventRecord {
+  id: number
+  session_id: number | null
+  ts: number
+  tag: string | null
+  note: string | null
+  intensity: number | null
+  created_at: string
+}
+
 export const sessionApi = {
-  list: () => getJson<unknown>('/sessions/'),
+  list: () => getJson<SessionSummary[]>('/sessions/'),
   historyList: () => getJson<{ status: string; sessions: unknown[] }>('/sessions/history/list'),
-  detail: (id: string) => getJson<unknown>(`/sessions/${encodeURIComponent(id)}`),
+  detail: (id: string | number) => getJson<Record<string, unknown>>(`/sessions/${encodeURIComponent(String(id))}`),
   analyzeLatest: () => postJson<Record<string, unknown>>('/sessions/analyze-latest'),
   analyzeByName: (name: string) => postJson<Record<string, unknown>>(`/sessions/analyze-by-name/${encodeURIComponent(name)}`),
   artifactUrl: (filename: string) => `${API_BASE}/sessions/artifacts/${encodeURIComponent(filename)}`,
+  listWandering: (id: number | string) =>
+    getJson<{ events: WanderingEventRecord[] }>(`/sessions/${encodeURIComponent(String(id))}/wandering-events`),
+  createWandering: (
+    id: number | string,
+    body: { ts: number; tag?: string | null; note?: string | null; intensity?: number | null },
+  ) => postJson<WanderingEventRecord>(`/sessions/${encodeURIComponent(String(id))}/wandering-events`, body),
+  exportUrl: (id: number | string, format: 'csv' | 'json') =>
+    `${API_BASE}/sessions/${encodeURIComponent(String(id))}/export?format=${format}`,
+  exportJson: (id: number | string) =>
+    getJson<Record<string, unknown>>(`/sessions/${encodeURIComponent(String(id))}/export?format=json`),
+}
+
+// ---- Signal detail (Tier-C bad-channel override) ------------------------
+export interface BadChannelRecord {
+  name: string
+  is_bad: boolean
+  reason: string
+  flat_line: boolean
+  noisy: boolean
+  manual_bad: boolean
+}
+
+export const signalApi = {
+  badChannels: () => getJson<{ channels: BadChannelRecord[]; flagged: string[] }>('/signal/bad-channels'),
+  setManualBad: (channel: string, bad: boolean) =>
+    postJson<{ channels: BadChannelRecord[]; flagged: string[] }>('/signal/bad-channels/manual', { channel, bad }),
 }
 
 // ---- Meditation ---------------------------------------------------------
@@ -90,6 +135,38 @@ export const meditationApi = {
   saveCalibration: (body: Record<string, number | string>) =>
     postJson<{ status: string; id: number }>('/meditation/calibration/save', body),
   latestCalibration: () => getJson<Record<string, unknown>>('/meditation/calibration/latest'),
+  stage0Readiness: () => getJson<Stage0Readiness>('/meditation/stage0-readiness'),
+  ackStage0: (body: { step_id?: string; all?: boolean }) =>
+    postJson<Stage0Readiness>('/meditation/stage0-readiness/ack', body),
+}
+
+// ---- Stage-0 readiness (calibration pre-flight) -------------------------
+export interface Stage0Prompt {
+  id: string
+  title: string
+  body: string
+  icon: string
+  acked: boolean
+}
+
+export interface Stage0Readiness {
+  acquisition_ready: boolean
+  impedance: {
+    electrode_type: string
+    threshold_kohm: number
+    all_channels_ok: boolean
+    bad_channels: string[]
+    channels: Array<{ label: string; kohm: number | null; level: string; threshold_kohm: number }>
+  }
+  imu: Record<string, unknown>
+  environment: {
+    is_ready: boolean
+    stabilise_remaining_s: number
+    stabilise_complete: boolean
+    all_steps_acked: boolean
+    acked_steps: string[]
+    prompts: Stage0Prompt[]
+  }
 }
 
 // ---- Practice tracker ---------------------------------------------------
