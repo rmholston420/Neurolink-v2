@@ -6,7 +6,7 @@ import { SessionDetailView } from '../components/journal/SessionDetailView'
 // Journal is the review surface: a server-backed session history on the left and
 // a deep per-session detail view (EA-1 / stage / band / wandering timelines,
 // notes, export, recording analysis) on the right. Fully rebuilt in TypeScript;
-// the v1 LegacyConsole it replaced has been retired.
+// the v1 console it replaced has been retired.
 export function JournalPage(_props: { store: NeurolinkStore }) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
