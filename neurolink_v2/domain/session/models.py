@@ -116,6 +116,27 @@ class JournalNote(Base):
     created_at: Mapped[str] = mapped_column(String(64), default="")
 
 
+class WanderingEvent(Base):
+    """A mind-wandering episode tagged during a practice session.
+
+    Persists the real-time WanderingLog tags (Tier C): each row records when
+    attention drifted (``ts``, monotonic session seconds), the user-assigned
+    ``tag`` (planning / memory / body / emotion / drowsy), and an optional note.
+    """
+
+    __tablename__ = "wandering_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sessions.id"), nullable=True, index=True
+    )
+    ts: Mapped[float] = mapped_column(Float, default=0.0)
+    tag: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    intensity: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[str] = mapped_column(String(64), default="")
+
+
 class Calibration(Base):
     """Per-band resting baseline (ported from MuseLink calibrations)."""
 
