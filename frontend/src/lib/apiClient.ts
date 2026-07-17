@@ -17,6 +17,15 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
   return (await r.json()) as T
 }
 
+async function sendJson<T>(method: 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T> {
+  const r = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  return (await r.json()) as T
+}
+
 // ---- Device -------------------------------------------------------------
 export const deviceApi = {
   scan: () => getJson<{ devices: Array<{ address: string; name?: string }>; count: number }>('/device/scan'),
@@ -76,6 +85,45 @@ export const practiceApi = {
   postLci: (value: number) => postJson<{ status: string }>('/practice/lci', { value }),
   lciHistory: (n = 50) => getJson<{ history: number[]; mean: number }>(`/practice/lci/history?n=${n}`),
   recommend: () => getJson<{ technique: string; duration_minutes: number; mean_lci: number }>('/practice/recommend'),
+}
+
+// ---- Journal & Goals (Tier-B) -------------------------------------------
+export interface SessionGoalRecord {
+  id: number
+  session_id: number | null
+  text: string
+  metric: string | null
+  target: number | null
+  progress: number
+  achieved: boolean
+  created_at: string
+}
+
+export interface JournalNoteRecord {
+  id: number
+  session_id: number | null
+  text: string
+  stage: string | null
+  region: string | null
+  created_at: string
+}
+
+export const journalApi = {
+  listGoals: (sessionId?: number) =>
+    getJson<{ goals: SessionGoalRecord[] }>(
+      `/journal/goals${sessionId != null ? `?session_id=${sessionId}` : ''}`,
+    ),
+  createGoal: (body: { text: string; metric?: string | null; target?: number | null; session_id?: number | null }) =>
+    postJson<SessionGoalRecord>('/journal/goals', body),
+  updateGoal: (id: number, body: { progress?: number; achieved?: boolean; text?: string }) =>
+    sendJson<SessionGoalRecord>('PATCH', `/journal/goals/${id}`, body),
+  deleteGoal: (id: number) => sendJson<{ status: string; id: number }>('DELETE', `/journal/goals/${id}`),
+  listNotes: (sessionId?: number) =>
+    getJson<{ notes: JournalNoteRecord[] }>(
+      `/journal/notes${sessionId != null ? `?session_id=${sessionId}` : ''}`,
+    ),
+  createNote: (body: { text: string; stage?: string | null; region?: string | null; session_id?: number | null }) =>
+    postJson<JournalNoteRecord>('/journal/notes', body),
 }
 
 export { API_ORIGIN }

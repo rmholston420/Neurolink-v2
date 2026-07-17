@@ -1,0 +1,51 @@
+{
+  "_note": "Representative /api/stream/ws frames AFTER the Tier-B backend delta. The eeg frame now carries additive `hrv` and `breathing` blocks (frame_hrv.py), fused from the cross-pump optical (PPG) and imu (accel-z) buffers. Sample values are schema-accurate; on Collosus with a live Athena these are populated from real neurokit2 R-peak detection + respiratory FFT. Both blocks are OMITTED (absent) until enough data has accumulated (~15 s PPG / ~10 s accel) so the UI renders an honest 'insufficient data' state.",
+  "frames": [
+    {
+      "type": "eeg",
+      "timestamps": [1752739200.01, 1752739200.05],
+      "eeg": { "0": [12.4, 11.9], "1": [8.1, 8.6], "2": [9.0, 9.3], "3": [10.2, 10.0] },
+      "channel_names": ["TP9", "AF7", "AF8", "TP10"],
+      "band_powers": {
+        "0": { "delta": 0.22, "theta": 0.31, "alpha": 0.28, "beta": 0.12, "gamma": 0.07 }
+      },
+      "band_quality": { "0": { "status": "good" } },
+      "pipeline": { "faa": 0.18, "fmt": 0.21, "bad_channels": [], "artifact_rejected": false, "baseline_phase": "steady" },
+      "contact": { "TP9": 0.91, "AF7": 0.88, "AF8": 0.85, "TP10": 0.9 },
+      "impedance": { "TP9": 9.2, "AF7": 11.1, "AF8": 12.4, "TP10": 9.9 },
+      "focus_state": "MOD",
+      "focus_score": 0.52,
+      "fatigue": 0.34,
+      "hrv": {
+        "rmssd": 48.3,
+        "sdnn": 55.1,
+        "hr_bpm": 61.2,
+        "sd1": 34.2,
+        "sd2": 62.9,
+        "ibi_ms": [980.1, 995.4, 1012.7, 988.2, 1001.5, 975.8, 1008.3]
+      },
+      "breathing": {
+        "rate_bpm": 5.6,
+        "rr_ppg": 5.4,
+        "rr_accel": 5.8,
+        "phase": 0.32,
+        "phase_label": "hold"
+      },
+      "battery": 87.0,
+      "stream_health": { "frames_total": 1200, "frames_rejected": 8, "frames_clean": 1192, "packet_loss_pct": 0.67, "last_frame_ts": 1752739200.05, "avg_tick_ms": 99.4 }
+    },
+    {
+      "type": "optical",
+      "timestamps": [1752739200.02, 1752739200.04],
+      "optical": { "0": [1024.3, 1025.1], "1": [980.2, 981.0] },
+      "battery": 87.0
+    },
+    {
+      "type": "imu",
+      "timestamps": [1752739200.02, 1752739200.04],
+      "accel": { "x": [0.01, 0.0], "y": [-0.02, -0.01], "z": [0.98, 0.99] },
+      "gyro": { "x": [0.1, 0.0], "y": [0.0, 0.1], "z": [0.0, 0.0] },
+      "battery": 87.0
+    }
+  ]
+}

@@ -75,6 +75,47 @@ class SessionFrame(Base):
     motion_rms: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
+class SessionGoal(Base):
+    """User-defined intention for a practice session (Tier-B SessionGoals).
+
+    Optionally scoped to a ``sessions.id`` (``session_id`` NULL = a standing
+    goal not tied to a recorded session). ``progress`` is a client-updated
+    0..1 completion estimate; ``achieved`` latches when the goal is met.
+    """
+
+    __tablename__ = "session_goals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sessions.id"), nullable=True, index=True
+    )
+    text: Mapped[str] = mapped_column(String(500), default="")
+    metric: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target: Mapped[float | None] = mapped_column(Float, nullable=True)
+    progress: Mapped[float] = mapped_column(Float, default=0.0)
+    achieved: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[str] = mapped_column(String(64), default="")
+
+
+class JournalNote(Base):
+    """Free-text note captured during a session (Tier-B AlchemicalJournal).
+
+    Records the alchemical stage / s-space region at the moment of writing so
+    the Journal timeline can correlate reflections with the practice arc.
+    """
+
+    __tablename__ = "journal_notes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sessions.id"), nullable=True, index=True
+    )
+    text: Mapped[str] = mapped_column(String(2000), default="")
+    stage: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(64), default="")
+
+
 class Calibration(Base):
     """Per-band resting baseline (ported from MuseLink calibrations)."""
 

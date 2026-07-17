@@ -35,6 +35,23 @@ export interface StreamHealth {
   avg_tick_ms: number
 }
 
+export interface HrvBlock {
+  rmssd: number
+  sdnn: number
+  hr_bpm: number
+  sd1: number
+  sd2: number
+  ibi_ms: number[]
+}
+
+export interface BreathingBlock {
+  rate_bpm: number
+  rr_ppg: number | null
+  rr_accel: number | null
+  phase: number
+  phase_label: 'inhale' | 'hold' | 'exhale'
+}
+
 export interface EegFrame {
   type: 'eeg'
   ts?: number[]
@@ -54,6 +71,9 @@ export interface EegFrame {
   focus_state?: string
   focus_score?: number
   fatigue?: number
+  // Fused HRV + breathing (frame_hrv.py). Absent until enough PPG/accel data.
+  hrv?: HrvBlock
+  breathing?: BreathingBlock
 }
 
 export interface OpticalFrame {
