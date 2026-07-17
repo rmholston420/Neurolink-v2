@@ -45,7 +45,7 @@ function MiniTopo({ store }: { store: NeurolinkStore }) {
   )
 }
 
-export function DeviceRail({ store }: { store: NeurolinkStore }) {
+export function DeviceRail({ store, onRecalibrate }: { store: NeurolinkStore; onRecalibrate?: () => void }) {
   const { deviceStatus, streamHealth, wsStatus, battery } = store
   const connected = Boolean(deviceStatus?.has_board)
   const streaming = Boolean(deviceStatus?.is_streaming)
@@ -70,6 +70,12 @@ export function DeviceRail({ store }: { store: NeurolinkStore }) {
         <div className="nl-whisper" style={{ textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Contact quality</div>
         <MiniTopo store={store} />
       </div>
+
+      {onRecalibrate && (
+        <button type="button" className="nl-btn nl-btn-primary" style={{ width: '100%' }} onClick={onRecalibrate}>
+          Recalibrate
+        </button>
+      )}
 
       <div>
         <div className="nl-whisper" style={{ textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Battery</div>

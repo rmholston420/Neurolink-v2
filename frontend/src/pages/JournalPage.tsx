@@ -1,13 +1,21 @@
-import React from 'react'
-import { LegacyConsole } from './LegacyConsole.jsx'
+import React, { useState } from 'react'
+import type { NeurolinkStore } from '../hooks/useNeurolinkStore'
+import { SessionHistoryPanel } from '../components/journal/SessionHistoryPanel'
+import { SessionDetailView } from '../components/journal/SessionDetailView'
 
-// Journal hosts the full operator console (session history, provenance, analysis)
-// ported verbatim from v1. It owns its own WS + device/session state, preserving
-// the review/provenance surface while the new shell drives Practice and Signal.
-export function JournalPage() {
+// Journal is the review surface: a server-backed session history on the left and
+// a deep per-session detail view (EA-1 / stage / band / wandering timelines,
+// notes, export, recording analysis) on the right. Fully rebuilt in TypeScript;
+// the v1 LegacyConsole it replaced has been retired.
+export function JournalPage(_props: { store: NeurolinkStore }) {
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+
   return (
     <div className="nl-page nl-page-journal">
-      <LegacyConsole />
+      <div className="nl-grid-2" style={{ alignItems: 'start' }}>
+        <SessionHistoryPanel selectedId={selectedId} onSelect={setSelectedId} />
+        <SessionDetailView sessionId={selectedId} />
+      </div>
     </div>
   )
 }

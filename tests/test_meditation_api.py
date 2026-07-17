@@ -40,3 +40,31 @@ def test_practice_lci_history_endpoint():
     resp = client.get("/api/practice/lci/history")
     assert resp.status_code == 200
     assert "history" in resp.json()
+
+
+def test_stage0_readiness_endpoint():
+    client = _client()
+    resp = client.get("/api/meditation/stage0-readiness")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "acquisition_ready" in body
+    assert "impedance" in body
+    assert "environment" in body
+    assert "prompts" in body["environment"]
+
+
+def test_stage0_readiness_ack_all_marks_steps():
+    client = _client()
+    resp = client.post("/api/meditation/stage0-readiness/ack", json={"all": True})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["environment"]["all_steps_acked"] is True
+
+
+def test_stage0_readiness_ack_unknown_step_errors():
+    client = _client()
+    resp = client.post(
+        "/api/meditation/stage0-readiness/ack", json={"step_id": "nope"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "error"

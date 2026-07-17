@@ -63,6 +63,15 @@ class SignalPipelineService:
             avg_tick_ms=h["avg_tick_ms"],
         )
 
+    def bad_channel_stats(self):
+        """Return a snapshot of Stage-2 per-channel stats (list[ChannelStats])."""
+        return self._pipeline._stage2.get_stats()
+
+    def set_manual_bad(self, channel: str, bad: bool) -> None:
+        """Manually flag / un-flag a channel in the live Stage-2 detector."""
+        with self._lock:
+            self._pipeline._stage2.set_manual_bad(channel, bad)
+
     def process_snapshot(self, snap: dict) -> PipelineResult | None:
         """Run the DSP pipeline on one broadcaster EEG snapshot.
 

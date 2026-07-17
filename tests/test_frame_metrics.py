@@ -2,7 +2,29 @@
 
 from __future__ import annotations
 
-from neurolink_v2.domain.signal.frame_metrics import compute_frame_metrics
+from dataclasses import dataclass
+
+from neurolink_v2.domain.signal.frame_metrics import (
+    compute_frame_metrics,
+    summarize_artifacts,
+    summarize_bad_channels,
+)
+
+
+@dataclass
+class _Ann:
+    artifact_type: str
+    confidence: float
+
+
+@dataclass
+class _Stat:
+    name: str
+    is_bad: bool
+    _reason: str
+
+    def reason(self) -> str:
+        return self._reason
 
 
 def _flat_channel(value: float, n: int = 256) -> list[float]:
@@ -65,3 +87,58 @@ def test_fatigue_rises_with_theta_over_alpha():
     low = compute_frame_metrics({}, None, {"alpha": 0.4, "theta": 0.05})["fatigue"]
     high = compute_frame_metrics({}, None, {"alpha": 0.1, "theta": 0.4})["fatigue"]
     assert high > low
+
+
+def test_summarize_artifacts_clean_frame_all_zero():
+    out = summarize_artifacts([])
+    assert out == {
+        "blink": 0.0,
+        "emg": 0.0,
+        "movement": 0.0,
+        "saturation": 0.0,
+        "drift": 0.0,
+        "score": 0.0,
+    }
+    assert summarize_artifacts(None)["score"] == 0.0
+
+
+def test_summarize_artifacts_maps_types_to_ui_classes():
+    out = summarize_artifacts(
+        [
+            _Ann("BLINK", 0.4),
+            _Ann("HORIZONTAL_EOG", 0.7),  # both fold into blink -> max wins
+            _Ann("EMG", 0.5),
+            _Ann("MOTION", 0.9),
+            _Ann("ELECTRODE_POP", 0.3),
+            _Ann("LINE_NOISE", 0.2),
+            _Ann("CARDIAC", 0.6),  # both fold into drift -> max wins
+        ]
+    )
+    assert out["blink"] == 0.7
+    assert out["emg"] == 0.5
+    assert out["movement"] == 0.9
+    assert out["saturation"] == 0.3
+    assert out["drift"] == 0.6
+    assert out["score"] == 0.9
+
+
+def test_summarize_artifacts_ignores_unknown_type():
+    out = summarize_artifacts([_Ann("MYSTERY", 0.99)])
+    assert out["score"] == 0.0
+
+
+def test_summarize_bad_channels_flags_and_reasons():
+    stats = [
+        _Stat("TP9", False, "ok"),
+        _Stat("AF7", True, "noisy"),
+        _Stat("AF8", True, "manual,flat_line"),
+    ]
+    out = summarize_bad_channels(stats, interpolation_active=True)
+    assert out["flagged"] == ["AF7", "AF8"]
+    assert out["reasons"] == {"AF7": "noisy", "AF8": "manual,flat_line"}
+    assert out["interpolation_active"] is True
+
+
+def test_summarize_bad_channels_empty():
+    out = summarize_bad_channels([], interpolation_active=False)
+    assert out == {"flagged": [], "reasons": {}, "interpolation_active": False}

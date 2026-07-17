@@ -15,6 +15,7 @@ from neurolink_v2.domain.session.analysis_router import router as session_analys
 from neurolink_v2.domain.session.journal_router import router as journal_router
 from neurolink_v2.domain.meditation.router import router as meditation_router
 from neurolink_v2.domain.meditation.practice_tracker.router import router as practice_router
+from neurolink_v2.domain.signal.router import router as signal_router
 from neurolink_v2.domain.session.db import init_db
 
 
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(journal_router, prefix="/api/journal", tags=["Journal & Goals"])
     app.include_router(meditation_router, prefix="/api/meditation", tags=["Meditation"])
     app.include_router(practice_router, prefix="/api/practice", tags=["Practice Tracker"])
+    app.include_router(signal_router, prefix="/api/signal", tags=["Signal Detail"])
 
     return app
 

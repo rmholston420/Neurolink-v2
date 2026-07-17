@@ -26,6 +26,25 @@ export interface PipelinePayload {
   fmt?: number | null
 }
 
+// Per-artifact-class coaching scores (frame_metrics.summarize_artifacts).
+// Each value is the max detector confidence [0, 1] for that class this frame;
+// `score` is the overall max. All zeros == clean frame.
+export interface ArtifactScores {
+  blink: number
+  emg: number
+  movement: number
+  saturation: number
+  drift: number
+  score: number
+}
+
+// Structured bad-channel state (frame_metrics.summarize_bad_channels).
+export interface BadChannelState {
+  flagged: string[]
+  reasons: Record<string, string>
+  interpolation_active: boolean
+}
+
 export interface StreamHealth {
   frames_total: number
   frames_rejected: number
@@ -74,6 +93,10 @@ export interface EegFrame {
   // Fused HRV + breathing (frame_hrv.py). Absent until enough PPG/accel data.
   hrv?: HrvBlock
   breathing?: BreathingBlock
+  // Structured sensor-detail fields (Tier C). Present only when the DSP
+  // pipeline produced a result this frame.
+  artifacts?: ArtifactScores
+  bad_channels?: BadChannelState
 }
 
 export interface OpticalFrame {
