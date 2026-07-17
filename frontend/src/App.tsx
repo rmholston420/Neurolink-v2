@@ -25,7 +25,7 @@ export function App() {
       <main className="nl-main" role="main">
         {tab === 'practice' && <PracticePage store={store} />}
         {tab === 'signal' && <SignalPage store={store} />}
-        {tab === 'journal' && <JournalPage />}
+        {tab === 'journal' && <JournalPage store={store} />}
       </main>
       <DeviceRail store={store} onRecalibrate={() => setCalibrating(true)} />
       <CommandBar store={store} />
