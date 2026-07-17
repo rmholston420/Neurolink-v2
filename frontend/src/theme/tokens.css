@@ -1,0 +1,95 @@
+/* Vajra Night — a dark, Tibetan-inspired palette for long meditation sessions.
+   Ceremonial rather than clinical: deep indigo base, monastic maroon and saffron
+   accents, gold for peak / eligible states. Tuned for OLED contrast. */
+
+:root {
+  /* Surfaces */
+  --bg-void: #07080d;
+  --bg-shrine: #0f1220;
+  --bg-shrine-hi: #161b33;
+  --stroke-veil: #242a46;
+
+  /* Ink */
+  --ink-primary: #ede7d3;
+  --ink-muted: #9aa0b8;
+  --ink-whisper: #5b617a;
+
+  /* Accents */
+  --accent-saffron: #f5a623;
+  --accent-maroon: #8c2f39;
+  --accent-gold: #d4af37;
+  --accent-indigo: #3b4fe0;
+  --accent-teal: #2fb3a8;
+  --accent-lotus: #c97eb2;
+  --accent-deep: #4b2e83;
+  --accent-fire: #e85a4f;
+  --accent-frost: #7fd1ff;
+  --halo-gold: rgba(212, 175, 55, 0.35);
+
+  /* Band-to-color map (delta/theta/alpha/beta/gamma) */
+  --band-delta: var(--accent-deep);
+  --band-theta: var(--accent-lotus);
+  --band-alpha: var(--accent-teal);
+  --band-beta: var(--accent-indigo);
+  --band-gamma: var(--accent-fire);
+
+  /* Radii + elevation */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+  --shadow-shrine: 0 18px 48px rgba(0, 0, 0, 0.45);
+
+  /* Layout rails */
+  --rail-width: 200px;
+  --command-height: 56px;
+  --nav-height: 64px;
+
+  /* Type scale */
+  --fs-12: 12px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-20: 20px;
+  --fs-28: 28px;
+  --fs-40: 40px;
+  --fs-64: 64px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(1200px 700px at 50% -10%, rgba(59, 79, 224, 0.12), transparent 60%),
+    var(--bg-void);
+  color: var(--ink-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus ring — saffron, honored across interactive controls. */
+:where(button, a, input, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-saffron);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--stroke-veil);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
