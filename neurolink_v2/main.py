@@ -1,6 +1,7 @@
 """Application entry point: creates the FastAPI app, mounts all routers, and
 registers the BrainFlow session lifespan."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -27,7 +28,19 @@ async def lifespan(app: FastAPI):
     yield
 
 
+def configure_logging() -> None:
+    """Set the root log level from settings.log_level (env var LOG_LEVEL).
+
+    Defaults to INFO so the per-frame DSP debug lines stay silent in a normal
+    session; set LOG_LEVEL=DEBUG to bring them back for troubleshooting.
+    """
+    level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    logging.basicConfig(level=level)
+    logging.getLogger().setLevel(level)
+
+
 def create_app() -> FastAPI:
+    configure_logging()
     app = FastAPI(
         title="Neurolink-v2",
         version="0.1.0",
