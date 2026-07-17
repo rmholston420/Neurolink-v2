@@ -3,8 +3,13 @@ import type { NeurolinkStore } from '../../hooks/useNeurolinkStore'
 import { meditationApi } from '../../lib/apiClient'
 
 export function CommandBar({ store }: { store: NeurolinkStore }) {
-  const { deviceStatus, recording, startStream, stopStream, startRecording, stopRecording } = store
+  const { deviceStatus, recording, streamStatus, startStream, stopStream, startRecording, stopRecording } = store
   const streaming = Boolean(deviceStatus?.is_streaming)
+  // Start is only redundant once the *user* has requested the stream AND the
+  // backend board confirms it. The backend can report is_streaming: true purely
+  // as a side effect of /api/device/connect, so we must not disable Start on the
+  // board state alone — otherwise the client-side stream can never be (re)started.
+  const startDisabled = streamStatus === 'streaming' && streaming
   const [calibrating, setCalibrating] = useState(false)
   const [sessionLabel, setSessionLabel] = useState('')
 
@@ -28,7 +33,10 @@ export function CommandBar({ store }: { store: NeurolinkStore }) {
 
   return (
     <div className="nl-command">
-      <button className={`nl-btn ${streaming ? '' : 'nl-btn-primary'}`} onClick={startStream} disabled={streaming}>Start stream</button>
+      {/* Start stream drives the backend board pump (streamApi.start). The
+          WebSocket opens separately on app mount (useNeurolinkWS), so the
+          socket/health pills can be live even before this is clicked. */}
+      <button className={`nl-btn ${startDisabled ? '' : 'nl-btn-primary'}`} onClick={startStream} disabled={startDisabled}>Start stream</button>
       <button className="nl-btn" onClick={stopStream} disabled={!streaming}>Stop stream</button>
       <span style={{ width: 1, height: 24, background: 'var(--stroke-veil)' }} />
       <button className={`nl-btn ${recording.recording ? 'nl-btn-danger' : ''}`} onClick={startRecording} disabled={recording.recording}>Start recording</button>
