@@ -1,20 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { MeditationPanel } from '../components/MeditationPanel.jsx'
 import {
-  BAND_NAMES,
-  HISTORY_LIMIT,
-  clamp01,
   flattenBandPowersForDisplay,
   getChannelLabel,
   getSignalGuidanceHint,
 } from '../lib/bandpower.js'
 import { card, detailChipBase, getStreamHealthStyle } from '../components/legacy/legacyStyles.js'
-import {
-  OperatorChannelCard,
-  QualityBadge,
-  BandTrendCard,
-  BandPowerChart,
-} from '../components/legacy/LegacyBandCharts.jsx'
 import { API_BASE, WS_URL } from '../lib/api.js'
 
 export function LegacyConsole() {
@@ -24,14 +15,12 @@ export function LegacyConsole() {
   const [selectedAddress, setSelectedAddress] = useState('')
   const [latest, setLatest] = useState({ eeg: null, optical: null, imu: null })
   const [events, setEvents] = useState([])
-  const [bandHistory, setBandHistory] = useState([])
   const [recordingState, setRecordingState] = useState({ recording: false, path: '' })
   const [analysisState, setAnalysisState] = useState({ status: 'idle', summary: null, error: '', bandsPng: '', summaryCsv: '', timeseriesCsv: '', recordingMetadata: null })
   const [sessionHistory, setSessionHistory] = useState([])
   const [sessionHistoryStatus, setSessionHistoryStatus] = useState('idle')
   const [selectedSessionName, setSelectedSessionName] = useState('')
   const [selectedSessionSummary, setSelectedSessionSummary] = useState(null)
-  const [selectedBand, setSelectedBand] = useState('alpha')
   const reviewSummary = selectedSessionSummary || analysisState.summary || {}
   const wsRef = useRef(null)
   const apiBase = useMemo(() => API_BASE, [])
@@ -63,8 +52,6 @@ export function LegacyConsole() {
   }, [flattenedBandPowers])
 
   const meditationFaa = latest.eeg?.pipeline?.faa ?? null
-
-  const qualityByChannel = useMemo(() => latest.eeg?.band_quality || {}, [latest])
 
   const formatPrimaryChannel = (value) => {
     const numeric = Number(value)
@@ -108,26 +95,6 @@ export function LegacyConsole() {
       body: 'This session shows a mixed band distribution without one dominant pattern across the summary ratios.',
     }
   }, [analysisState.summary])
-
-  const operatorChannelsSection = Object.keys(flattenedBandPowers).length ? (
-    <div style={card}>
-      <h2 style={{ marginTop: 0, marginBottom: 8 }}>Athena channels</h2>
-      <p style={{ color: '#9eb0d1', marginTop: 0, marginBottom: 12 }}>
-        Live per-channel normalized bands with operator-readable signal status.
-      </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
-        {Object.entries(flattenedBandPowers).map(([channelKey, bands]) => (
-          <OperatorChannelCard
-            key={channelKey}
-            channelKey={channelKey}
-            channelNames={channelNames}
-            bands={bands}
-            quality={qualityByChannel?.[channelKey]}
-          />
-        ))}
-      </div>
-    </div>
-  ) : null
 
   function pushEvent(message) {
     setEvents((prev) => [new Date().toLocaleTimeString() + ' — ' + message, ...prev].slice(0, 10))
@@ -312,11 +279,6 @@ export function LegacyConsole() {
       if (msg.type === 'ping') return
       if (msg.type === 'eeg') {
         setLatest((prev) => ({ ...prev, eeg: msg }))
-        const bandPowers = flattenBandPowersForDisplay(msg?.band_powers || {})
-        const firstChannelBands = Object.values(bandPowers)[0]
-        if (firstChannelBands) {
-          setBandHistory((prev) => [...prev, firstChannelBands].slice(-HISTORY_LIMIT))
-        }
       }
       if (msg.type === 'optical') setLatest((prev) => ({ ...prev, optical: msg }))
       if (msg.type === 'imu') setLatest((prev) => ({ ...prev, imu: msg }))
@@ -333,7 +295,6 @@ export function LegacyConsole() {
 
   const bandPowers = flattenBandPowersForDisplay(latest.eeg?.band_powers || {})
   const bandDebug = latest.eeg?.band_debug || {}
-  const bandQuality = latest.eeg?.band_quality || {}
   const battery =
     latest.eeg?.battery ??
     latest.optical?.battery ??
@@ -422,8 +383,6 @@ export function LegacyConsole() {
         </div>
       </section>
 
-      {operatorChannelsSection}
-
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16, marginTop: 16 }}>
         <div style={card}>
           <h2 style={{ marginTop: 0 }}>Battery</h2>
@@ -476,24 +435,6 @@ export function LegacyConsole() {
           )}
         </div>
         <div style={card}>
-          <h2 style={{ marginTop: 0 }}>Channel quality</h2>
-          {Object.keys(bandQuality).length === 0 ? (
-            <p>No quality data yet</p>
-          ) : (
-            <div style={{ display: 'grid', gap: 10 }}>
-              {Object.entries(bandQuality).map(([channel, quality]) => (
-                <div key={channel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#0b1220', border: '1px solid rgba(158,176,209,0.14)' }}>
-                  <div>
-                    <div style={{ color: '#e8eefc', fontWeight: 600 }}>{getChannelLabel(channel, channelNames)}</div>
-                    <div style={{ color: '#9eb0d1', fontSize: 12 }}>{quality?.reason || 'No reason available'}</div>
-                  </div>
-                  <QualityBadge quality={quality} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={card}>
           <h2 style={{ marginTop: 0 }}>Session status</h2>
           <p>Recording: <strong style={{ color: recordingState.recording ? '#34d399' : '#f59e0b' }}>{recordingState.recording ? 'active' : 'idle'}</strong></p>
           <p>Analysis: {analysisState.status}</p>
@@ -534,32 +475,6 @@ export function LegacyConsole() {
               )}
             </div>
           </div>
-        </div>
-      </section>
-
-      <section style={{ marginBottom: 16 }}>
-        <div style={card}>
-          <h2>Rolling EEG band-power chart</h2>
-          <p style={{ color: '#9eb0d1', marginTop: 0 }}>
-            Live normalized history from the first available EEG channel, last {HISTORY_LIMIT} updates. Click a band chip to focus it.
-          </p>
-          <BandPowerChart history={bandHistory} selectedBand={selectedBand} onSelectBand={setSelectedBand} />
-        </div>
-      </section>
-
-      <section style={{ marginBottom: 16 }}>
-        <div style={card}>
-          <h2>Band trend cards</h2>
-          <p style={{ color: '#9eb0d1', marginTop: 0 }}>Compact live trends for the last {HISTORY_LIMIT} band-power updates.</p>
-          {bandHistory.length === 0 ? (
-            <p>No band-power history yet</p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-              {BAND_NAMES.map((bandName) => (
-                <BandTrendCard key={bandName} bandName={bandName} history={bandHistory} />
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
