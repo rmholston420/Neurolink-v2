@@ -95,6 +95,31 @@ async def create_wandering_event(
     return _wandering_dict(event)
 
 
+@router.post("/wandering-events")
+async def create_unattached_wandering_event(
+    body: WanderingEventCreate, db: AsyncSession = Depends(get_db)
+):
+    """Persist a wandering event not tied to a recorded session.
+
+    The live Practice shell tags mind-wandering in real time without a DB
+    session row (recordings are JSONL files), so these events are stored with a
+    null ``session_id`` — the nullable FK the wandering_events table was created
+    with.
+    """
+    event = WanderingEvent(
+        session_id=None,
+        ts=body.ts,
+        tag=body.tag,
+        note=body.note,
+        intensity=body.intensity,
+        created_at=_now(),
+    )
+    db.add(event)
+    await db.commit()
+    await db.refresh(event)
+    return _wandering_dict(event)
+
+
 # ---- Export -------------------------------------------------------------
 _FRAME_COLUMNS = [
     "ts", "alpha", "theta", "beta", "delta", "gamma", "faa", "fmt",

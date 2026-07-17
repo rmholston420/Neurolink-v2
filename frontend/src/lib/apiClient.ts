@@ -92,6 +92,9 @@ export const sessionApi = {
     id: number | string,
     body: { ts: number; tag?: string | null; note?: string | null; intensity?: number | null },
   ) => postJson<WanderingEventRecord>(`/sessions/${encodeURIComponent(String(id))}/wandering-events`, body),
+  createUnattachedWandering: (
+    body: { ts: number; tag?: string | null; note?: string | null; intensity?: number | null },
+  ) => postJson<WanderingEventRecord>('/sessions/wandering-events', body),
   exportUrl: (id: number | string, format: 'csv' | 'json') =>
     `${API_BASE}/sessions/${encodeURIComponent(String(id))}/export?format=${format}`,
   exportJson: (id: number | string) =>

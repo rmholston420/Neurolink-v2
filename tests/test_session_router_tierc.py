@@ -76,6 +76,19 @@ def test_wandering_events_post_and_get(tmp_path):
     assert events[0]["note"] == "grocery list"
 
 
+def test_unattached_wandering_event(tmp_path):
+    client, _ = _client_and_engine(tmp_path)
+    r = client.post(
+        "/api/sessions/wandering-events",
+        json={"ts": 5.0, "tag": "drowsy", "intensity": 0.7},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["session_id"] is None
+    assert body["tag"] == "drowsy"
+    assert body["intensity"] == 0.7
+
+
 def test_export_json(tmp_path):
     client, SessionLocal = _client_and_engine(tmp_path)
     sid = _seed_session(SessionLocal)
