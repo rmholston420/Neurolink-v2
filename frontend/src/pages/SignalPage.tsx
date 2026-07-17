@@ -1,59 +1,95 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import type { NeurolinkStore } from '../hooks/useNeurolinkStore'
-import { Card } from '../components/ui/Card'
+import { getChannelLabel } from '../lib/bandpower.js'
+import type { BandName } from '../lib/vajra'
 import { BandTrend } from '../components/signal/BandTrend'
-import { getChannelLabel, BAND_NAMES, BAND_COLORS } from '../lib/bandpower.js'
+import { TopoMap } from '../components/signal/TopoMap'
+import { RollingSpectrogram } from '../components/signal/RollingSpectrogram'
+import { BandPowerChart } from '../components/signal/BandPowerChart'
+import { SignalPipelinePanel } from '../components/signal/SignalPipelinePanel'
+import { ContactQuality } from '../components/signal/ContactQuality'
+import { ImpedancePanel } from '../components/signal/ImpedancePanel'
+import { FocusFatigueGauge } from '../components/signal/FocusFatigueGauge'
+import { ConnectivityArc } from '../components/signal/ConnectivityArc'
+import { DeviceStatusBar } from '../components/signal/DeviceStatusBar'
+import { CalibrationPanel } from '../components/signal/CalibrationPanel'
 
-// Signal is the instrumentation view: per-channel band powers and contact
-// quality straight from the live EEG frame. Richer charts (spectrogram, topo)
-// land in later tiers; this page keeps every value bound to a real frame.
+// Signal is the full instrumentation view: every Tier-A visualization bound to
+// a real WS frame or REST poll. Per-channel data is re-keyed from BrainFlow
+// channel indices to electrode labels here, once, and passed to the leaf
+// components as label-keyed maps.
 export function SignalPage({ store }: { store: NeurolinkStore }) {
-  const { flattenedBands, channelNames, bandQuality, bandHistory } = store
-  const channels = Object.entries(flattenedBands)
+  const {
+    flattenedBands,
+    rawEeg,
+    channelNames,
+    bandHistory,
+    streamHealth,
+    streamHealthHistory,
+    contact,
+    impedance,
+    focusState,
+    focusScore,
+    fatigue,
+    meditation,
+    battery,
+    deviceStatus,
+    frames,
+  } = store
+
+  const channelBands = useMemo(() => {
+    const out: Record<string, Partial<Record<BandName, number>>> = {}
+    for (const [key, bands] of Object.entries(flattenedBands)) {
+      out[getChannelLabel(key, channelNames)] = bands as Partial<Record<BandName, number>>
+    }
+    return out
+  }, [flattenedBands, channelNames])
+
+  const signals = useMemo(() => {
+    const out: Record<string, number[]> = {}
+    for (const [key, samples] of Object.entries(rawEeg)) {
+      if (Array.isArray(samples) && samples.length) out[getChannelLabel(key, channelNames)] = samples
+    }
+    return out
+  }, [rawEeg, channelNames])
+
+  const contactMean = useMemo(() => {
+    const vals = Object.values(contact)
+    return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null
+  }, [contact])
+
+  const source = deviceStatus?.transport_metadata?.board_id || null
+  const connected = Boolean(deviceStatus?.has_board)
 
   return (
     <div className="nl-page nl-page-signal">
-      <BandTrend history={bandHistory} />
-      <Card title="Band powers" subtitle="Per-channel, live from the stream">
-        {channels.length === 0 ? (
-          <p className="nl-muted">No live signal yet. Start the stream to populate.</p>
-        ) : (
-          <div className="nl-grid-2">
-            {channels.map(([key, bands]) => (
-              <div key={key} className="nl-band-card">
-                <div className="nl-whisper" style={{ textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-                  {getChannelLabel(key, channelNames)}
-                </div>
-                <dl className="font-mono" style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 4, fontSize: 13 }}>
-                  {BAND_NAMES.map((b) => (
-                    <React.Fragment key={b}>
-                      <dt style={{ color: (BAND_COLORS as Record<string, string>)[b] }}>{b}</dt>
-                      <dd style={{ margin: 0, textAlign: 'right', color: 'var(--ink-muted)' }}>
-                        {(Number((bands as Record<string, number>)[b]) || 0).toFixed(3)}
-                      </dd>
-                    </React.Fragment>
-                  ))}
-                </dl>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <DeviceStatusBar battery={battery} contactMean={contactMean} source={source} connected={connected} />
+      </div>
 
-      <Card title="Contact quality" subtitle="Per-channel status">
-        {Object.keys(bandQuality).length === 0 ? (
-          <p className="nl-muted">No quality data yet.</p>
-        ) : (
-          <dl className="font-mono" style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 6, fontSize: 13 }}>
-            {Object.entries(bandQuality).map(([key, q]) => (
-              <React.Fragment key={key}>
-                <dt>{getChannelLabel(key, channelNames)}</dt>
-                <dd style={{ margin: 0, textAlign: 'right', color: 'var(--ink-muted)' }}>{q?.status ?? 'unknown'}</dd>
-              </React.Fragment>
-            ))}
-          </dl>
-        )}
-      </Card>
+      <BandTrend history={bandHistory} />
+
+      <div className="nl-grid-2">
+        <TopoMap channelBands={channelBands} />
+        <div className="nl-stack">
+          <FocusFatigueGauge focusState={focusState} focusScore={focusScore} fatigue={fatigue} />
+          <ContactQuality contact={contact} channelNames={channelNames} />
+        </div>
+      </div>
+
+      <RollingSpectrogram signals={signals} />
+
+      <BandPowerChart channelBands={channelBands} />
+
+      <div className="nl-grid-2">
+        <ConnectivityArc signals={signals} />
+        <div className="nl-stack">
+          <SignalPipelinePanel health={streamHealth} history={streamHealthHistory} pipeline={frames.eeg?.pipeline} />
+          <ImpedancePanel impedance={impedance} />
+        </div>
+      </div>
+
+      <CalibrationPanel liveBands={meditation.bands} />
     </div>
   )
 }
