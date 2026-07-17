@@ -23,6 +23,7 @@ from fastapi import WebSocket
 from neurolink_v2.domain.device.manager import device_manager
 from neurolink_v2.domain.signal.bandpower import compute_band_powers, compute_band_powers_debug
 from neurolink_v2.domain.signal.quality import classify_bandpower_quality
+from neurolink_v2.domain.signal.service import signal_service
 from neurolink_v2.domain.stream import recorder
 
 log = logging.getLogger(__name__)
@@ -119,6 +120,23 @@ class StreamBroadcaster:
                     snap["band_powers"] = band_powers
                     snap["band_debug"] = band_debug
                     snap["band_quality"] = band_quality
+                    # Run the ported DSP pipeline alongside the legacy path.
+                    # Additive only: a DSP failure must never kill the pump.
+                    try:
+                        result = signal_service.process_snapshot(snap)
+                        if result is not None:
+                            snap["pipeline"] = {
+                                "bands": result.bands.model_dump(),
+                                "bad_channels": result.bad_channels,
+                                "artifact_rejected": result.artifact_rejected,
+                                "artifact_reasons": result.artifact_reasons,
+                                "baseline_phase": result.baseline_phase,
+                                "faa": result.faa,
+                                "fmt": result.fmt,
+                            }
+                        snap["stream_health"] = signal_service.health_payload().model_dump()
+                    except Exception:
+                        log.debug("signal pipeline tick failed", exc_info=True)
                     try:
                         snap["battery"] = await device_manager.get_battery_level()
                     except BrainFlowError as error:

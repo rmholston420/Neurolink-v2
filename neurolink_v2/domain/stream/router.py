@@ -4,8 +4,16 @@ from fastapi import APIRouter, WebSocket
 
 from .broadcaster import broadcaster
 from neurolink_v2.domain.device.manager import device_manager
+from neurolink_v2.domain.signal.dsp.models import StreamHealthPayload
+from neurolink_v2.domain.signal.service import signal_service
 
 router = APIRouter()
+
+
+@router.get("/health", response_model=StreamHealthPayload)
+async def stream_health() -> StreamHealthPayload:
+    """Live stream-quality metrics from the DSP pipeline (StreamHealth)."""
+    return signal_service.health_payload()
 
 
 @router.post("/start")

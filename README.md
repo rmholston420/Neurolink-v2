@@ -73,3 +73,31 @@ This repository now includes a domain-sliced scaffold for discovering a Muse Ath
 - `neurolink_v2/api_streaming/`
 - `frontend/`
 - `docs/`
+
+### Ported DSP stack (`feature/v1-signal-port`)
+
+Neurolink-v1's mature DSP pipeline is ported into `neurolink_v2/domain/signal/`:
+
+- `domain/signal/dsp/` — Stages 1–6 (`pipeline.EEGPipeline`), band powers,
+  artifact gate/detector, ASR, ocular/cardiac regression, bad-channel detection
+  + spherical-spline interpolation, FAA/FMt, IMU, PPG, breathing, fNIRS.
+- `domain/signal/stage0/` — `Stage0Guard` (impedance + IMU + environment gate).
+- `domain/session/calibration.py` — `CalibrationController` runs the session-start
+  resting baseline (30 s warmup discard → 150 s total) + Stage-0 readiness gate.
+
+The live WebSocket EEG pump feeds each snapshot through `EEGPipeline`; pipeline
+output and stream-health are attached to the outgoing frame additively. Poll
+current stream quality with:
+
+```bash
+curl http://localhost:8008/api/stream/health
+# -> { frames_total, frames_rejected, frames_clean, packet_loss_pct,
+#      last_frame_ts, avg_tick_ms }
+```
+
+Run on Collosus (Kubuntu, Python 3.11):
+
+```bash
+uvicorn neurolink_v2.main:app --reload --port 8008
+npm --prefix frontend run dev     # or: npm --prefix frontend run build
+```
