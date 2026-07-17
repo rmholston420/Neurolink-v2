@@ -99,7 +99,7 @@ export function useNeurolinkStore() {
   )
 
   const meditation: MeditationDerived = useMemo(() => {
-    const channels = Object.values(flattenedBands)
+    const channels = Object.values(flattenedBands) as Array<Record<string, number>>
     if (!channels.length) {
       return { bands: EMPTY_BANDS, faa: null, region: 'A', stage: 'Nigredo', overlay: 'X0', engagement: 0, coverage: 0 }
     }
@@ -117,7 +117,7 @@ export function useNeurolinkStore() {
       delta: sums.delta / n, gamma: sums.gamma / n,
     }
     const faa = frames.eeg?.pipeline?.faa ?? null
-    const region = sSpaceRegion(bands.alpha, bands.theta)
+    const region = String(sSpaceRegion(bands.alpha, bands.theta))
     const eng = engagementIndex(bands.alpha, bands.theta, bands.beta)
     return {
       bands, faa, region,

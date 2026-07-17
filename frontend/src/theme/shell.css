@@ -181,6 +181,29 @@
 .nl-dot.warn { background: var(--accent-saffron); }
 .nl-dot.bad { background: var(--accent-maroon); }
 
+/* Pages */
+.nl-page { display: flex; flex-direction: column; gap: 20px; }
+
+.nl-hero {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  justify-content: center;
+  padding: 12px 0 8px;
+}
+.nl-hero-caption { display: flex; flex-direction: column; gap: 6px; }
+
+.nl-band-card {
+  background: var(--bg-shrine-hi);
+  border: 1px solid var(--stroke-veil);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+@media (max-width: 720px) {
+  .nl-hero { flex-direction: column; text-align: center; }
+}
+
 /* Grids used across pages */
 .nl-grid-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
 .nl-grid-row { display: grid; gap: 20px; }

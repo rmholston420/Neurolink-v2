@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from 'react'
 import type { NeurolinkStore } from '../hooks/useNeurolinkStore'
 import { NeurofeedbackGauge } from '../components/practice/NeurofeedbackGauge'
 import { Card } from '../components/ui/Card'
-import { MeditationPanel } from '../components/MeditationPanel.jsx'
+import { MeditationPanel as MeditationPanelBase } from '../components/MeditationPanel.jsx'
+
+const MeditationPanel = MeditationPanelBase as React.FC<{ bands: Record<string, number>; faa: number | null }>
+import { PracticeTracker } from '../components/practice/PracticeTracker'
 import { meditationApi, type MeditationClassifyResult } from '../lib/apiClient'
 
 // Practice is the meditation-first home. The hero gauge fuses coverage,
@@ -65,6 +68,8 @@ export function PracticePage({ store }: { store: NeurolinkStore }) {
           </dl>
         </Card>
       </div>
+
+      <PracticeTracker coverage={meditation.coverage} />
     </div>
   )
 }

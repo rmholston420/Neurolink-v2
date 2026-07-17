@@ -25,7 +25,7 @@ function arcPath(cx: number, cy: number, r: number, start: number, end: number):
 
 export function NeurofeedbackGauge({ meditation, ea1Eligible = false, ea1Score = 0, size = 320 }: Props) {
   const [phase, setPhase] = useState(0)
-  const raf = useRef<number>()
+  const raf = useRef<number | undefined>(undefined)
   const reduced = prefersReducedMotion()
 
   useEffect(() => {
