@@ -47,6 +47,13 @@ export interface EegFrame {
   pipeline?: PipelinePayload
   stream_health?: StreamHealth
   battery?: number | null
+  // Per-frame derived hardware/state metrics (frame_metrics.py). Keyed by
+  // channel name; absent until the first EEG frame carries usable samples.
+  contact?: Record<string, number>
+  impedance?: Record<string, number>
+  focus_state?: string
+  focus_score?: number
+  fatigue?: number
 }
 
 export interface OpticalFrame {

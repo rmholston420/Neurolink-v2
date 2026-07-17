@@ -34,6 +34,7 @@ export function useNeurolinkStore() {
   const [streamStatus, setStreamStatus] = useState<'idle' | 'streaming' | 'stopped'>('idle')
   const [recording, setRecording] = useState<{ recording: boolean; path: string }>({ recording: false, path: '' })
   const [bandHistory, setBandHistory] = useState<Array<Record<string, number>>>([])
+  const [streamHealthHistory, setStreamHealthHistory] = useState<number[]>([])
   const lastEegRef = useRef<unknown>(null)
 
   const refreshDevice = useCallback(async () => {
@@ -46,7 +47,9 @@ export function useNeurolinkStore() {
 
   const refreshHealth = useCallback(async () => {
     try {
-      setStreamHealth(await streamApi.health())
+      const h = await streamApi.health()
+      setStreamHealth(h)
+      setStreamHealthHistory((prev) => [...prev, Number(h.packet_loss_pct) || 0].slice(-HISTORY_LIMIT))
     } catch {
       /* noop */
     }
@@ -128,6 +131,19 @@ export function useNeurolinkStore() {
     }
   }, [flattenedBands, frames.eeg])
 
+  // Per-frame derived metrics (frame_metrics.py). Empty maps / nulls before the
+  // first usable EEG frame — components render honest "no data" states, never
+  // fabricated values.
+  const contact: Record<string, number> = useMemo(() => frames.eeg?.contact || {}, [frames.eeg])
+  const impedance: Record<string, number> = useMemo(() => frames.eeg?.impedance || {}, [frames.eeg])
+  const focusState = frames.eeg?.focus_state ?? null
+  const focusScore = frames.eeg?.focus_score ?? null
+  const fatigue = frames.eeg?.fatigue ?? null
+
+  // Raw per-channel sample buffers (µV) for the spectrogram / topo / connectivity
+  // canvas components. Keyed by BrainFlow channel index string.
+  const rawEeg: Record<string, number[]> = useMemo(() => frames.eeg?.eeg || {}, [frames.eeg])
+
   const battery = frames.eeg?.battery ?? deviceStatus?.battery ?? null
 
   // ---- Controls ---------------------------------------------------------
@@ -166,8 +182,9 @@ export function useNeurolinkStore() {
 
   return {
     frames, wsStatus,
-    deviceStatus, streamHealth, streamStatus, recording,
+    deviceStatus, streamHealth, streamHealthHistory, streamStatus, recording,
     flattenedBands, channelNames, bandQuality, bandHistory,
+    contact, impedance, focusState, focusScore, fatigue, rawEeg,
     meditation, battery,
     connect, disconnect, startStream, stopStream, startRecording, stopRecording,
     refreshDevice, refreshHealth, refreshRecording,
