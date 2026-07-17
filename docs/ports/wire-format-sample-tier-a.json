@@ -1,0 +1,126 @@
+{
+  "_note": "Representative EEG frames from /api/stream/ws showing the Tier-A additions produced by neurolink_v2/domain/signal/frame_metrics.py (compute_frame_metrics), wired into broadcaster._eeg_pump. New keys vs docs/ports/wire-format-sample.json: contact, impedance, focus_state, focus_score, fatigue. These are keyed by Athena channel label (channel_names), NOT BrainFlow index. Impedance is an RMS-derived heuristic proxy in kΩ (Athena exposes no impedance channel) — documented as such in ImpedancePanel. This env has no headset attached, so values below are synthetic but shape-accurate, derived directly from the compute_frame_metrics contract and the EegFrame type in frontend/src/lib/wire.ts. Arrays truncated for readability.",
+  "derived_type": "frontend/src/lib/wire.ts :: EegFrame (contact/impedance/focus_state/focus_score/fatigue optional fields)",
+  "samples": [
+    {
+      "type": "eeg",
+      "timestamps": [1752710400.512, 1752710400.516, 1752710400.520],
+      "eeg": {
+        "0": [812.4, 810.1, 809.7],
+        "1": [798.2, 799.9, 801.3],
+        "2": [805.6, 804.2, 803.1],
+        "3": [790.8, 792.4, 793.0]
+      },
+      "channel_names": ["TP9", "AF7", "AF8", "TP10"],
+      "band_powers": {
+        "0": { "delta": 0.412, "theta": 0.221, "alpha": 0.318, "beta": 0.142, "gamma": 0.061 },
+        "1": { "delta": 0.388, "theta": 0.244, "alpha": 0.351, "beta": 0.131, "gamma": 0.058 },
+        "2": { "delta": 0.401, "theta": 0.238, "alpha": 0.342, "beta": 0.135, "gamma": 0.060 },
+        "3": { "delta": 0.419, "theta": 0.215, "alpha": 0.309, "beta": 0.148, "gamma": 0.063 }
+      },
+      "pipeline": {
+        "bands": { "delta": 0.405, "theta": 0.229, "alpha": 0.330, "beta": 0.139, "gamma": 0.060 },
+        "bad_channels": [],
+        "artifact_rejected": false,
+        "artifact_reasons": [],
+        "baseline_phase": "tracking",
+        "faa": 0.043,
+        "fmt": 4.2
+      },
+      "stream_health": {
+        "frames_total": 1284,
+        "frames_rejected": 17,
+        "frames_clean": 1267,
+        "packet_loss_pct": 1.3,
+        "last_frame_ts": 1752710400.520,
+        "avg_tick_ms": 4.1
+      },
+      "contact": { "TP9": 0.92, "AF7": 0.88, "AF8": 0.41, "TP10": 0.90 },
+      "impedance": { "TP9": 11.4, "AF7": 14.9, "AF8": 63.2, "TP10": 12.1 },
+      "focus_state": "MOD",
+      "focus_score": 0.58,
+      "fatigue": 0.37,
+      "battery": 78
+    },
+    {
+      "type": "eeg",
+      "timestamps": [1752710401.512, 1752710401.516, 1752710401.520],
+      "eeg": {
+        "0": [815.1, 814.0, 813.2],
+        "1": [800.4, 801.0, 802.7],
+        "2": [806.2, 805.9, 804.8],
+        "3": [792.1, 793.3, 794.0]
+      },
+      "channel_names": ["TP9", "AF7", "AF8", "TP10"],
+      "band_powers": {
+        "0": { "delta": 0.301, "theta": 0.198, "alpha": 0.402, "beta": 0.198, "gamma": 0.071 },
+        "1": { "delta": 0.288, "theta": 0.201, "alpha": 0.421, "beta": 0.201, "gamma": 0.069 },
+        "2": { "delta": 0.295, "theta": 0.205, "alpha": 0.410, "beta": 0.195, "gamma": 0.072 },
+        "3": { "delta": 0.310, "theta": 0.190, "alpha": 0.395, "beta": 0.205, "gamma": 0.074 }
+      },
+      "pipeline": {
+        "bands": { "delta": 0.298, "theta": 0.199, "alpha": 0.407, "beta": 0.200, "gamma": 0.071 },
+        "bad_channels": [],
+        "artifact_rejected": false,
+        "artifact_reasons": [],
+        "baseline_phase": "tracking",
+        "faa": 0.051,
+        "fmt": 4.0
+      },
+      "stream_health": {
+        "frames_total": 1285,
+        "frames_rejected": 17,
+        "frames_clean": 1268,
+        "packet_loss_pct": 1.2,
+        "last_frame_ts": 1752710401.520,
+        "avg_tick_ms": 4.0
+      },
+      "contact": { "TP9": 0.94, "AF7": 0.91, "AF8": 0.55, "TP10": 0.92 },
+      "impedance": { "TP9": 10.8, "AF7": 12.7, "AF8": 44.5, "TP10": 11.6 },
+      "focus_state": "HIGH",
+      "focus_score": 0.81,
+      "fatigue": 0.29,
+      "battery": 78
+    },
+    {
+      "type": "eeg",
+      "timestamps": [1752710402.512, 1752710402.516, 1752710402.520],
+      "eeg": {
+        "0": [980.7, 640.2, 1120.5],
+        "1": [801.0, 802.1, 800.9],
+        "2": [808.4, 807.1, 806.0],
+        "3": [793.5, 794.8, 795.1]
+      },
+      "channel_names": ["TP9", "AF7", "AF8", "TP10"],
+      "band_powers": {
+        "0": { "delta": 0.512, "theta": 0.288, "alpha": 0.121, "beta": 0.052, "gamma": 0.027 },
+        "1": { "delta": 0.372, "theta": 0.240, "alpha": 0.348, "beta": 0.130, "gamma": 0.059 },
+        "2": { "delta": 0.398, "theta": 0.236, "alpha": 0.340, "beta": 0.134, "gamma": 0.061 },
+        "3": { "delta": 0.415, "theta": 0.219, "alpha": 0.311, "beta": 0.145, "gamma": 0.062 }
+      },
+      "pipeline": {
+        "bands": { "delta": 0.424, "theta": 0.246, "alpha": 0.290, "beta": 0.115, "gamma": 0.052 },
+        "bad_channels": ["TP9"],
+        "artifact_rejected": true,
+        "artifact_reasons": ["motion", "amplitude_out_of_range"],
+        "baseline_phase": "tracking",
+        "faa": 0.038,
+        "fmt": 5.1
+      },
+      "stream_health": {
+        "frames_total": 1286,
+        "frames_rejected": 18,
+        "frames_clean": 1268,
+        "packet_loss_pct": 2.4,
+        "last_frame_ts": 1752710402.520,
+        "avg_tick_ms": 4.3
+      },
+      "contact": { "TP9": 0.22, "AF7": 0.87, "AF8": 0.58, "TP10": 0.90 },
+      "impedance": { "TP9": 148.6, "AF7": 13.5, "AF8": 41.2, "TP10": 12.4 },
+      "focus_state": "DISTRACTED",
+      "focus_score": 0.24,
+      "fatigue": 0.62,
+      "battery": 77
+    }
+  ]
+}
