@@ -14,6 +14,7 @@ import { ConnectivityArc } from '../components/signal/ConnectivityArc'
 import { DeviceStatusBar } from '../components/signal/DeviceStatusBar'
 import { CalibrationPanel } from '../components/signal/CalibrationPanel'
 import { BadChannelPanel } from '../components/signal/BadChannelPanel'
+import { ArtifactGuidePanel } from '../components/signal/ArtifactGuidePanel'
 
 // Signal is the full instrumentation view: every Tier-A visualization bound to
 // a real WS frame or REST poll. Per-channel data is re-keyed from BrainFlow
@@ -90,7 +91,10 @@ export function SignalPage({ store }: { store: NeurolinkStore }) {
         </div>
       </div>
 
-      <BadChannelPanel badChannels={frames.eeg?.bad_channels} />
+      <div className="nl-grid-2">
+        <BadChannelPanel badChannels={frames.eeg?.bad_channels} />
+        <ArtifactGuidePanel artifacts={frames.eeg?.artifacts} />
+      </div>
 
       <CalibrationPanel liveBands={meditation.bands} />
     </div>
