@@ -40,13 +40,28 @@ infra/
 # Backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn neurolink_v2.main:app --reload
+uvicorn neurolink_v2.main:app --reload --port 8008
 
 # Frontend
 cd frontend
 npm install
-npm run dev
+npm run dev          # dev server
+npm run test:run     # vitest
+npm run build        # production bundle
 ```
+
+### Transport backend
+
+The device layer is transport-abstracted (see `neurolink_v2/domain/device/backends/`).
+Select a backend via the `TRANSPORT` env var (or `.env`):
+
+```bash
+TRANSPORT=brainflow   # default, BoardIds.MUSE_S_ATHENA_BOARD (BrainFlow >= 5.22)
+TRANSPORT=lsl         # OpenMuse LSL outlets (requires `pip install pylsl`)
+```
+
+Both backends report `board_id="MUSE_S_ATHENA_BOARD"` in their `transport_metadata`,
+which is now surfaced on `GET /api/device/status`.
 
 ## Muse S Athena: Key Specs
 

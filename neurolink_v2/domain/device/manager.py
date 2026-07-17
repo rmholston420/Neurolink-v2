@@ -100,6 +100,15 @@ class DeviceManager:
     def preset(self) -> str:
         return settings.muse_preset
 
+    @property
+    def transport_metadata(self) -> dict[str, str]:
+        """Static transport descriptor for the active backend selection."""
+        return {
+            "transport": settings.transport,
+            "preset": settings.muse_preset,
+            "board_id": "MUSE_S_ATHENA_BOARD",
+        }
+
     async def connect(self) -> dict:
         async with self._lock:
             if self._board is not None and self.is_streaming:
@@ -198,7 +207,7 @@ class DeviceManager:
                     self.channel_names = parsed
         except Exception:
             self.channel_names = list(_DEFAULT_CHANNEL_NAMES)
-        log.info('Muse S Athena connected and streaming (preset=%s).', settings.muse_preset)
+        log.info('Muse Athena connected and streaming (preset=%s).', settings.muse_preset)
 
     def _sync_disconnect(self) -> None:
         if self._board is None:
@@ -213,7 +222,7 @@ class DeviceManager:
         except Exception:
             pass
         self._board = None
-        log.info('Muse S Athena disconnected.')
+        log.info('Muse Athena disconnected.')
 
 
 device_manager = DeviceManager()

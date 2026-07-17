@@ -21,7 +21,7 @@ async def scan(timeout: float = Query(5.0, ge=1.0, le=30.0)):
 
 @router.post('/connect')
 async def connect():
-    """Discover and connect to the Muse S Athena over BLE."""
+    """Discover and connect to the Muse Athena over BLE."""
     return await device_manager.connect()
 
 
@@ -40,4 +40,5 @@ async def status():
         'has_board': device_manager.has_board,
         'channel_names': device_manager.channel_names,
         'preset': device_manager.preset,
+        'transport_metadata': device_manager.transport_metadata,
     }
