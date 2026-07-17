@@ -120,6 +120,22 @@ export interface PingFrame {
 
 export type WireFrame = EegFrame | OpticalFrame | ImuFrame | PingFrame
 
+// A device discovered by GET /api/device/scan.
+export interface DeviceCandidate {
+  name: string
+  address: string
+  rssi?: number | null
+}
+
+// The persisted last-paired device from GET /api/device/last-paired.
+export interface LastPairedDevice {
+  ble_address: string
+  display_name: string
+  preset: string
+  board_id: number
+  connected_at: string | null
+}
+
 export interface DeviceStatus {
   is_streaming: boolean
   board_id: string

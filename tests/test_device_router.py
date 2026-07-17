@@ -39,5 +39,5 @@ async def test_connect_disconnect_mocked():
         return_value={'status': 'connected'},
     ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
-            resp = await client.post('/api/device/connect')
+            resp = await client.post('/api/device/connect', json={'ble_address': '00:55:DA:BA:23:4A'})
         assert resp.json()['status'] == 'connected'

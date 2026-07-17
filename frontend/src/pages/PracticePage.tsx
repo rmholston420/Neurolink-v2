@@ -16,6 +16,7 @@ import { SessionGoals } from '../components/practice/SessionGoals'
 import { PersonalBaseline } from '../components/practice/PersonalBaseline'
 import { SSpaceDisplay } from '../components/practice/SSpaceDisplay'
 import { AudioFeedbackPanel } from '../components/practice/AudioFeedbackPanel'
+import { FitCheckBanner } from '../components/signal/FitCheckOverlay'
 import { useHRVCoherence } from '../hooks/useHRVCoherence'
 import { useAudioFeedback } from '../hooks/useAudioFeedback'
 import { BREATH_PERIOD_MS } from '../theme/motion'
@@ -25,8 +26,8 @@ import type { BandName } from '../lib/vajra'
 // engagement, and EA-1 progress (classified server-side in the store so the
 // gold breath halo only lights on a real result). Every Tier-B instrument lives
 // here as a first-class citizen wired to live store data.
-export function PracticePage({ store }: { store: NeurolinkStore }) {
-  const { meditation, hrv, breathing, ea1 } = store
+export function PracticePage({ store, onGoToSignal }: { store: NeurolinkStore; onGoToSignal?: () => void }) {
+  const { meditation, hrv, breathing, ea1, poorFit } = store
   const audio = useAudioFeedback()
   const { coherence } = useHRVCoherence(hrv?.ibi_ms ?? null)
 
@@ -45,6 +46,7 @@ export function PracticePage({ store }: { store: NeurolinkStore }) {
 
   return (
     <div className="nl-page nl-page-practice">
+      <FitCheckBanner active={poorFit} onGoToSignal={onGoToSignal} />
       <div className="nl-hero">
         <NeurofeedbackGauge meditation={meditation} ea1Eligible={eligible} ea1Score={score} breathPeriodMs={breathPeriodMs} />
         <div className="nl-hero-caption">

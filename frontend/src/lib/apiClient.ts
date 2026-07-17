@@ -1,37 +1,76 @@
 // Thin typed wrappers over the v2 REST surface. All URLs are config-driven via
 // API_BASE (VITE_API_BASE). Every function maps to a real backend endpoint.
 import { API_BASE, API_ORIGIN } from './api.js'
-import type { DeviceStatus, StreamHealth } from './wire'
+import type { DeviceStatus, StreamHealth, DeviceCandidate, LastPairedDevice } from './wire'
+
+// Thrown on any non-2xx response so callers can branch on HTTP status. The
+// backend returns machine-readable 4xx/5xx codes (409 already-connected /
+// not-streaming, 400 no-address, 500 backend fault) instead of 200-with-error,
+// so the UI can distinguish an expected conflict from a real failure.
+export class ApiError extends Error {
+  status: number
+  body: unknown
+  constructor(status: number, body: unknown, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.body = body
+  }
+}
+
+async function parseBody(r: Response): Promise<unknown> {
+  const text = await r.text()
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const r = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  const data = await parseBody(r)
+  if (!r.ok) {
+    const msg =
+      (data && typeof data === 'object' && 'error' in data && typeof (data as { error: unknown }).error === 'string'
+        ? (data as { error: string }).error
+        : r.statusText) || `HTTP ${r.status}`
+    throw new ApiError(r.status, data, msg)
+  }
+  return data as T
+}
 
 async function getJson<T>(path: string): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`)
-  return (await r.json()) as T
+  return request<T>('GET', path)
 }
 
 async function postJson<T>(path: string, body?: unknown): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  return (await r.json()) as T
+  return request<T>('POST', path, body)
 }
 
 async function sendJson<T>(method: 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  return (await r.json()) as T
+  return request<T>(method, path, body)
 }
 
 // ---- Device -------------------------------------------------------------
+export interface ConnectBody {
+  ble_address?: string
+  display_name?: string
+  preset?: string
+  board_id?: number
+}
+
 export const deviceApi = {
-  scan: () => getJson<{ devices: Array<{ address: string; name?: string }>; count: number }>('/device/scan'),
-  connect: () => postJson<{ status: string }>('/device/connect'),
+  scan: () => getJson<{ devices: DeviceCandidate[]; count: number }>('/device/scan'),
+  connect: (body?: ConnectBody) => postJson<{ status: string; ble_address?: string }>('/device/connect', body ?? {}),
   disconnect: () => postJson<{ status: string }>('/device/disconnect'),
   status: () => getJson<DeviceStatus>('/device/status'),
+  lastPaired: () => getJson<{ device: LastPairedDevice | null }>('/device/last-paired'),
 }
 
 // ---- Stream -------------------------------------------------------------

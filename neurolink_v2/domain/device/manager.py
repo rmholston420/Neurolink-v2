@@ -91,6 +91,7 @@ class DeviceManager:
         self._lock = asyncio.Lock()
         self.is_streaming: bool = False
         self.channel_names: list[str] = list(_DEFAULT_CHANNEL_NAMES)
+        self._ble_address: str = ""
 
     @property
     def has_board(self) -> bool:
@@ -109,7 +110,11 @@ class DeviceManager:
             "board_id": "MUSE_S_ATHENA_BOARD",
         }
 
-    async def connect(self) -> dict:
+    @property
+    def board_id(self) -> int:
+        return _BOARD_ID
+
+    async def connect(self, ble_address: str | None = None) -> dict:
         async with self._lock:
             if self._board is not None and self.is_streaming:
                 return {
@@ -117,14 +122,17 @@ class DeviceManager:
                     'board_id': _BOARD_ID,
                     'preset': settings.muse_preset,
                     'channel_names': self.channel_names,
+                    'ble_address': self._ble_address,
                 }
-            await asyncio.to_thread(self._sync_connect)
+            await asyncio.to_thread(self._sync_connect, ble_address)
             self.is_streaming = True
+            self._ble_address = ble_address or settings.muse_mac_address
             return {
                 'status': 'connected',
                 'board_id': _BOARD_ID,
                 'preset': settings.muse_preset,
                 'channel_names': self.channel_names,
+                'ble_address': self._ble_address,
             }
 
     async def disconnect(self) -> dict:
@@ -183,11 +191,12 @@ class DeviceManager:
             'gyro': {ax: data[ch].tolist() for ax, ch in zip(['x', 'y', 'z'], gyro_ch)},
         }
 
-    def _sync_connect(self) -> None:
+    def _sync_connect(self, ble_address: str | None = None) -> None:
         BoardShim.enable_board_logger()
         params = BrainFlowInputParams()
-        if settings.muse_mac_address:
-            params.mac_address = settings.muse_mac_address
+        mac = ble_address or settings.muse_mac_address
+        if mac:
+            params.mac_address = mac
         if settings.muse_serial_number:
             params.serial_number = settings.muse_serial_number
         params.other_info = settings.brainflow_other_info

@@ -1,6 +1,7 @@
 """Application entry point: creates the FastAPI app, mounts all routers, and
 registers the BrainFlow session lifespan."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -19,12 +20,49 @@ from neurolink_v2.domain.meditation.practice_tracker.router import router as pra
 from neurolink_v2.domain.signal.router import router as signal_router
 from neurolink_v2.domain.session.db import init_db
 
+log = logging.getLogger(__name__)
+
+# Auto-reconnect must never block startup: a headset that's off or out of range
+# should not delay the API coming up. 5s is enough for a BLE session to prepare.
+_AUTO_RECONNECT_TIMEOUT_S = 5.0
+
+
+async def _auto_reconnect() -> None:
+    """Best-effort single reconnect to the last-paired device on boot.
+
+    Reads the persisted ``last_paired_device`` row; if present, attempts one
+    connect with a short timeout. Never raises — on failure the user can still
+    Scan+Connect from the UI.
+    """
+    from neurolink_v2.domain.device.manager import device_manager
+    from neurolink_v2.domain.device.preferences import get_last_paired
+
+    try:
+        last = await get_last_paired()
+    except Exception:
+        log.debug("auto_reconnect skipped: could not read last-paired device", exc_info=True)
+        return
+    if not last or not last.get("ble_address"):
+        return
+
+    address = last["ble_address"]
+    log.info("auto_reconnect_attempt device=%s address=%s", last.get("display_name"), address)
+    try:
+        await asyncio.wait_for(device_manager.connect(address), timeout=_AUTO_RECONNECT_TIMEOUT_S)
+        log.info("auto_reconnect_success device=%s", last.get("display_name"))
+    except asyncio.TimeoutError:
+        log.info("auto_reconnect_failed reason=timeout after %ss", _AUTO_RECONNECT_TIMEOUT_S)
+    except Exception as exc:  # noqa: BLE001 — never fail startup on reconnect
+        log.info("auto_reconnect_failed reason=%s", exc)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: initialise DB. Shutdown: nothing extra needed (device is
-    stopped via the /device/disconnect endpoint)."""
+    """Startup: initialise DB (runs Alembic to head), then kick off a background
+    auto-reconnect to the last-paired device. Shutdown: nothing extra needed
+    (device is stopped via the /device/disconnect endpoint)."""
     await init_db()
+    asyncio.create_task(_auto_reconnect())
     yield
 
 
