@@ -9,15 +9,17 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from neurolink_v2.domain.session.db import Base
 from neurolink_v2.domain.session import models as _models  # noqa: F401 – registers tables
 from neurolink_v2.domain.session.journal_router import get_db
 from neurolink_v2.main import create_app
 
+from .conftest import apply_migrations
+
 
 def _client(tmp_path):
-    url = f"sqlite+aiosqlite:///{tmp_path / 'journal.db'}"
-    engine = create_async_engine(url)
+    db_file = tmp_path / "journal.db"
+    apply_migrations(db_file)
+    engine = create_async_engine(f"sqlite+aiosqlite:///{db_file}")
     SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
     async def _override_db():
@@ -27,15 +29,6 @@ def _client(tmp_path):
     app = create_app()
     app.dependency_overrides[get_db] = _override_db
     client = TestClient(app)
-
-    # Create tables on the temp engine before serving requests.
-    import asyncio
-
-    async def _mk():
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    asyncio.run(_mk())
     return client
 
 

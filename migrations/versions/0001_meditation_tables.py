@@ -4,9 +4,14 @@ Revision ID: 0001_meditation_tables
 Revises:
 Create Date: 2026-07-17
 
-Adds the two MuseLink-derived tables to v2's existing session database rather
-than a parallel DB: ``session_frames`` (per-frame classifier / EA-1 metrics,
-FK -> sessions.id) and ``calibrations`` (per-band resting baselines).
+Creates the base ``sessions`` + ``eeg_samples`` store and the two
+MuseLink-derived tables on top of it in a single parallel-DB-free schema:
+``session_frames`` (per-frame classifier / EA-1 metrics, FK -> sessions.id)
+and ``calibrations`` (per-band resting baselines).
+
+The base tables were historically created by ``Base.metadata.create_all`` at
+app startup; they now live here so ``alembic upgrade head`` is a complete,
+single source of truth for a fresh install (see feature/alembic-bootstrap).
 """
 
 from typing import Sequence, Union
@@ -21,6 +26,38 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    op.create_table(
+        "sessions",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("label", sa.String(length=255), nullable=False, server_default=""),
+        sa.Column("preset", sa.String(length=32), nullable=False),
+        sa.Column(
+            "started_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
+        sa.Column("ended_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("duration_s", sa.Float(), nullable=True),
+        sa.Column("csv_path", sa.String(length=512), nullable=True),
+    )
+    op.create_table(
+        "eeg_samples",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column(
+            "session_id",
+            sa.Integer(),
+            sa.ForeignKey("sessions.id"),
+            nullable=False,
+        ),
+        sa.Column("timestamp", sa.Float(), nullable=False, index=True),
+        sa.Column("tp9", sa.Float(), nullable=False),
+        sa.Column("af7", sa.Float(), nullable=False),
+        sa.Column("af8", sa.Float(), nullable=False),
+        sa.Column("tp10", sa.Float(), nullable=False),
+        sa.Column("alpha_power", sa.Float(), nullable=True),
+        sa.Column("theta_power", sa.Float(), nullable=True),
+    )
     op.create_table(
         "session_frames",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -64,3 +101,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("calibrations")
     op.drop_table("session_frames")
+    op.drop_table("eeg_samples")
+    op.drop_table("sessions")

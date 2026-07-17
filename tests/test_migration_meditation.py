@@ -1,9 +1,9 @@
 """Verify the Alembic migration creates the meditation tables and can revert.
 
-Runs the migration against a throwaway SQLite file using a sync engine. The
-``sessions`` table (referenced by ``session_frames.session_id``) is created
-first via the ORM metadata, mirroring the app bootstrap where ``init_db()``
-create_all precedes migration-managed extensions.
+Runs the migration against a throwaway SQLite file using a sync engine. Since
+root migration 0001 now creates the base ``sessions`` + ``eeg_samples`` store
+as well, ``alembic upgrade head`` builds the whole schema on its own — no ORM
+pre-seeding needed.
 """
 
 from __future__ import annotations
@@ -37,17 +37,12 @@ def test_migration_creates_and_drops_tables(tmp_path, monkeypatch):
 
     engine = sa.create_engine(sync_url)
 
-    # Pre-create the base sessions table the FK depends on.
-    from neurolink_v2.domain.session.db import Base
-    from neurolink_v2.domain.session import models as _m  # noqa: F401
-
-    Base.metadata.tables["sessions"].create(engine)
-
     cfg = _alembic_config(sync_url)
     command.upgrade(cfg, "head")
 
     insp = sa.inspect(engine)
     tables = set(insp.get_table_names())
+    assert "sessions" in tables
     assert "session_frames" in tables
     assert "calibrations" in tables
 

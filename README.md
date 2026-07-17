@@ -50,6 +50,17 @@ npm run test:run     # vitest
 npm run build        # production bundle
 ```
 
+### Database migrations
+
+Schema is owned entirely by Alembic and applied **automatically on app startup**:
+`init_db()` runs `alembic upgrade head` (idempotent — a no-op when already at
+head) and logs `Applied Alembic migrations up to <revision>`. A fresh install
+needs no manual step — just start the app. Running `alembic upgrade head` by hand
+is only needed for CLI-only workflows (e.g. migrating a DB without booting the
+server). Legacy installs whose tables were created by the old `create_all`
+bootstrap but never version-stamped will fail fast on startup with a message to
+run `alembic stamp head` once.
+
 ### Transport backend
 
 The device layer is transport-abstracted (see `neurolink_v2/domain/device/backends/`).
@@ -126,6 +137,7 @@ npm --prefix frontend run dev     # or: npm --prefix frontend run build
   (LCI, recommend).
 - `frontend/src/components/MeditationPanel.jsx` renders the live meditation
   state (region, stage, overlay, engagement, integration coverage).
-- SQLite tables `session_frames` + `calibrations` extend the existing `sessions`
-  table via one Alembic migration. Apply with `alembic upgrade head`. See
+- SQLite tables `session_frames` + `calibrations` live alongside the base
+  `sessions` store in the root Alembic migration; migrations apply automatically
+  on startup (see [Database migrations](#database-migrations)). See
   `docs/ports/feature-muselink-port.md`.
