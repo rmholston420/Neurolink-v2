@@ -22,6 +22,7 @@ from fastapi import WebSocket
 
 from neurolink_v2.domain.device.manager import device_manager
 from neurolink_v2.domain.signal.bandpower import compute_band_powers, compute_band_powers_debug
+from neurolink_v2.domain.signal.frame_hrv import frame_hrv_tracker
 from neurolink_v2.domain.signal.frame_metrics import compute_frame_metrics
 from neurolink_v2.domain.signal.quality import classify_bandpower_quality
 from neurolink_v2.domain.signal.service import signal_service
@@ -152,6 +153,13 @@ class StreamBroadcaster:
                         )
                     except Exception:
                         log.debug("frame metrics tick failed", exc_info=True)
+                    # Fused HRV + breathing from the cross-pump rolling buffers.
+                    # Additive only: a tracker failure must never kill the pump,
+                    # and empty sub-maps are simply absent (UI shows "no data").
+                    try:
+                        snap.update(frame_hrv_tracker.snapshot())
+                    except Exception:
+                        log.debug("hrv/breathing tick failed", exc_info=True)
                     try:
                         snap["battery"] = await device_manager.get_battery_level()
                     except BrainFlowError as error:
@@ -182,6 +190,10 @@ class StreamBroadcaster:
                     break
                 if snap:
                     snap["type"] = "optical"
+                    try:
+                        frame_hrv_tracker.push_optical(snap.get("optical"))
+                    except Exception:
+                        log.debug("hrv optical push failed", exc_info=True)
                     recorder.record_packet("optical", snap)
                     await self.broadcast(snap)
         except asyncio.CancelledError:
@@ -205,6 +217,10 @@ class StreamBroadcaster:
                     break
                 if snap:
                     snap["type"] = "imu"
+                    try:
+                        frame_hrv_tracker.push_imu(snap.get("accel"))
+                    except Exception:
+                        log.debug("hrv imu push failed", exc_info=True)
                     recorder.record_packet("imu", snap)
                     await self.broadcast(snap)
         except asyncio.CancelledError:

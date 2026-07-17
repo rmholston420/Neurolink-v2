@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useMemo } from 'react'
 import type { NeurolinkStore } from '../hooks/useNeurolinkStore'
 import { NeurofeedbackGauge } from '../components/practice/NeurofeedbackGauge'
 import { Card } from '../components/ui/Card'
@@ -6,37 +6,47 @@ import { MeditationPanel as MeditationPanelBase } from '../components/Meditation
 
 const MeditationPanel = MeditationPanelBase as React.FC<{ bands: Record<string, number>; faa: number | null }>
 import { PracticeTracker } from '../components/practice/PracticeTracker'
-import { meditationApi, type MeditationClassifyResult } from '../lib/apiClient'
+import { HRVCoherenceTrainer } from '../components/practice/HRVCoherenceTrainer'
+import { BreathingPanel } from '../components/practice/BreathingPanel'
+import { MeditationTimer } from '../components/practice/MeditationTimer'
+import { EA1Score } from '../components/practice/EA1Score'
+import { AlchemicalJournal } from '../components/practice/AlchemicalJournal'
+import { WanderingLog } from '../components/practice/WanderingLog'
+import { SessionGoals } from '../components/practice/SessionGoals'
+import { PersonalBaseline } from '../components/practice/PersonalBaseline'
+import { SSpaceDisplay } from '../components/practice/SSpaceDisplay'
+import { AudioFeedbackPanel } from '../components/practice/AudioFeedbackPanel'
+import { useHRVCoherence } from '../hooks/useHRVCoherence'
+import { useAudioFeedback } from '../hooks/useAudioFeedback'
+import { BREATH_PERIOD_MS } from '../theme/motion'
+import type { BandName } from '../lib/vajra'
 
 // Practice is the meditation-first home. The hero gauge fuses coverage,
-// engagement, and EA-1 progress; EA-1 eligibility is classified server-side off
-// the live band means so the gold breath halo only lights on a real result.
+// engagement, and EA-1 progress (classified server-side in the store so the
+// gold breath halo only lights on a real result). Every Tier-B instrument lives
+// here as a first-class citizen wired to live store data.
 export function PracticePage({ store }: { store: NeurolinkStore }) {
-  const { meditation, frames } = store
-  const [ea1, setEa1] = useState<MeditationClassifyResult['ea1_result'] | null>(null)
-  const inFlight = useRef(false)
-
-  useEffect(() => {
-    if (!frames.eeg || inFlight.current) return
-    inFlight.current = true
-    const b = meditation.bands
-    meditationApi
-      .classify({
-        alpha: b.alpha, theta: b.theta, beta: b.beta,
-        delta: b.delta, gamma: b.gamma, faa: meditation.faa ?? 0,
-      })
-      .then((r) => setEa1(r.ea1_result))
-      .catch(() => { /* backend offline; leave prior */ })
-      .finally(() => { inFlight.current = false })
-  }, [frames.eeg])
+  const { meditation, hrv, breathing, ea1 } = store
+  const audio = useAudioFeedback()
+  const { coherence } = useHRVCoherence(hrv?.ibi_ms ?? null)
 
   const eligible = Boolean(ea1?.eligible)
   const score = ea1 ? ea1.score : meditation.coverage
+  const breathPeriodMs =
+    breathing && breathing.rate_bpm >= 2 && breathing.rate_bpm <= 30
+      ? (60 / breathing.rate_bpm) * 1000
+      : BREATH_PERIOD_MS
+
+  const liveBands = meditation.bands as Record<BandName, number>
+  const wanderingVector = useMemo(
+    () => [meditation.bands.alpha, meditation.bands.theta, meditation.bands.beta, meditation.bands.delta, meditation.bands.gamma, meditation.engagement],
+    [meditation],
+  )
 
   return (
     <div className="nl-page nl-page-practice">
       <div className="nl-hero">
-        <NeurofeedbackGauge meditation={meditation} ea1Eligible={eligible} ea1Score={score} />
+        <NeurofeedbackGauge meditation={meditation} ea1Eligible={eligible} ea1Score={score} breathPeriodMs={breathPeriodMs} />
         <div className="nl-hero-caption">
           <div className="nl-whisper" style={{ letterSpacing: '0.2em', textTransform: 'uppercase' }}>
             {meditation.stage}
@@ -58,16 +68,30 @@ export function PracticePage({ store }: { store: NeurolinkStore }) {
         <Card title="Meditation state" subtitle="Derived from live band powers">
           <MeditationPanel bands={meditation.bands} faa={meditation.faa} />
         </Card>
-        <Card title="Session focus" subtitle="Engagement & integration">
-          <dl className="font-mono" style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 8, fontSize: 14 }}>
-            <dt className="nl-muted">Region</dt><dd style={{ margin: 0, textAlign: 'right' }}>{meditation.region}</dd>
-            <dt className="nl-muted">Overlay</dt><dd style={{ margin: 0, textAlign: 'right' }}>{meditation.overlay}</dd>
-            <dt className="nl-muted">Engagement</dt><dd style={{ margin: 0, textAlign: 'right' }}>{(meditation.engagement * 100).toFixed(0)}%</dd>
-            <dt className="nl-muted">Coverage</dt><dd style={{ margin: 0, textAlign: 'right' }}>{(meditation.coverage * 100).toFixed(0)}%</dd>
-            <dt className="nl-muted">FAA</dt><dd style={{ margin: 0, textAlign: 'right' }}>{meditation.faa == null ? '—' : meditation.faa.toFixed(3)}</dd>
-          </dl>
-        </Card>
+        <SSpaceDisplay alpha={meditation.bands.alpha} theta={meditation.bands.theta} region={meditation.region} stage={meditation.stage} />
       </div>
+
+      <div className="nl-grid-2">
+        <EA1Score ea1={ea1} />
+        <HRVCoherenceTrainer hrv={hrv} />
+      </div>
+
+      <div className="nl-grid-2">
+        <BreathingPanel breathing={breathing} coherence={coherence} />
+        <MeditationTimer />
+      </div>
+
+      <div className="nl-grid-2">
+        <PersonalBaseline liveBands={liveBands} />
+        <AudioFeedbackPanel audio={audio} />
+      </div>
+
+      <div className="nl-grid-2">
+        <SessionGoals />
+        <WanderingLog vector={wanderingVector} />
+      </div>
+
+      <AlchemicalJournal stage={meditation.stage} region={meditation.region} />
 
       <PracticeTracker coverage={meditation.coverage} />
     </div>

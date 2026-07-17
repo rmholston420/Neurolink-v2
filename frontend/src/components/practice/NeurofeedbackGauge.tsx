@@ -10,6 +10,8 @@ interface Props {
   ea1Eligible?: boolean
   ea1Score?: number
   size?: number
+  /** Pulse cadence for the halo; defaults to the 5.5 bpm target. */
+  breathPeriodMs?: number
 }
 
 const TAU = Math.PI * 2
@@ -23,10 +25,11 @@ function arcPath(cx: number, cy: number, r: number, start: number, end: number):
   return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`
 }
 
-export function NeurofeedbackGauge({ meditation, ea1Eligible = false, ea1Score = 0, size = 320 }: Props) {
+export function NeurofeedbackGauge({ meditation, ea1Eligible = false, ea1Score = 0, size = 320, breathPeriodMs = BREATH_PERIOD_MS }: Props) {
   const [phase, setPhase] = useState(0)
   const raf = useRef<number | undefined>(undefined)
   const reduced = prefersReducedMotion()
+  const period = breathPeriodMs > 0 ? breathPeriodMs : BREATH_PERIOD_MS
 
   useEffect(() => {
     if (reduced || !ea1Eligible) {
@@ -36,14 +39,14 @@ export function NeurofeedbackGauge({ meditation, ea1Eligible = false, ea1Score =
     let start: number | null = null
     const loop = (t: number) => {
       if (start === null) start = t
-      setPhase((((t - start) % BREATH_PERIOD_MS) / BREATH_PERIOD_MS))
+      setPhase((((t - start) % period) / period))
       raf.current = requestAnimationFrame(loop)
     }
     raf.current = requestAnimationFrame(loop)
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current)
     }
-  }, [ea1Eligible, reduced])
+  }, [ea1Eligible, reduced, period])
 
   const cx = size / 2
   const cy = size / 2
@@ -57,7 +60,13 @@ export function NeurofeedbackGauge({ meditation, ea1Eligible = false, ea1Score =
   const ea1 = Math.max(0, Math.min(1, ea1Score))
 
   const haloScale = reduced ? 1.02 : 1 + Math.sin(phase * TAU) * 0.05
-  const haloOpacity = ea1Eligible ? (reduced ? 0.5 : 0.3 + Math.sin(phase * TAU) * 0.25) : 0
+  // Gold + pulsing on the breath when eligible; a dim, steady indigo otherwise.
+  const haloColor = ea1Eligible ? 'var(--halo-gold)' : 'var(--accent-indigo)'
+  const haloOpacity = ea1Eligible
+    ? reduced
+      ? 0.5
+      : 0.3 + Math.sin(phase * TAU) * 0.25
+    : 0.12
 
   const rings = [
     { value: cov, color: 'var(--accent-teal)', rr: r, label: 'coverage' },
@@ -71,9 +80,9 @@ export function NeurofeedbackGauge({ meditation, ea1Eligible = false, ea1Score =
         aria-hidden
         style={{
           position: 'absolute', inset: 0, borderRadius: '50%',
-          background: 'radial-gradient(circle, var(--halo-gold), transparent 68%)',
+          background: `radial-gradient(circle, ${haloColor}, transparent 68%)`,
           transform: `scale(${haloScale})`, opacity: haloOpacity,
-          transition: 'opacity 400ms ease', pointerEvents: 'none',
+          transition: 'opacity 400ms ease, background 400ms ease', pointerEvents: 'none',
         }}
       />
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ position: 'relative' }}>

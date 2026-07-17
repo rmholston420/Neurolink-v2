@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { MeditationPanel } from '../components/MeditationPanel.jsx'
 import {
   flattenBandPowersForDisplay,
   getChannelLabel,
@@ -25,33 +24,10 @@ export function LegacyConsole() {
   const wsRef = useRef(null)
   const apiBase = useMemo(() => API_BASE, [])
 
-  const flattenedBandPowers = useMemo(
-    () => flattenBandPowersForDisplay(latest.eeg?.band_powers || {}),
-    [latest]
-  )
-
   const channelNames = useMemo(
     () => latest.eeg?.channel_names || deviceStatus?.channel_names || [],
     [latest, deviceStatus]
   )
-
-  const meditationBands = useMemo(() => {
-    const channels = Object.values(flattenedBandPowers)
-    if (!channels.length) return {}
-    const sums = { alpha: 0, theta: 0, beta: 0 }
-    for (const bands of channels) {
-      sums.alpha += Number(bands.alpha) || 0
-      sums.theta += Number(bands.theta) || 0
-      sums.beta += Number(bands.beta) || 0
-    }
-    return {
-      alpha: sums.alpha / channels.length,
-      theta: sums.theta / channels.length,
-      beta: sums.beta / channels.length,
-    }
-  }, [flattenedBandPowers])
-
-  const meditationFaa = latest.eeg?.pipeline?.faa ?? null
 
   const formatPrimaryChannel = (value) => {
     const numeric = Number(value)
@@ -332,8 +308,6 @@ export function LegacyConsole() {
           <span>{imuSampleCount > 0 ? 'live' : 'no frames'}</span>
         </span>
       </div>
-
-      <MeditationPanel bands={meditationBands} faa={meditationFaa} />
 
       <section style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <button onClick={scan}>Scan</button>
