@@ -1,0 +1,40 @@
+/* Self-hosted fonts via @fontsource. Display = Cormorant Garamond (section
+   headers only, ceremonial gravity); UI = Inter; Mono = JetBrains Mono. */
+
+@import '@fontsource/cormorant-garamond/400.css';
+@import '@fontsource/cormorant-garamond/600.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+
+:root {
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  line-height: 1.25;
+  font-weight: 600;
+  margin: 0;
+}
+
+body {
+  line-height: 1.4;
+  font-size: var(--fs-16);
+}

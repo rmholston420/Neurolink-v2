@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { MeditationPanel } from './components/MeditationPanel.jsx'
+import { MeditationPanel } from '../components/MeditationPanel.jsx'
 import {
   BAND_NAMES,
   HISTORY_LIMIT,
@@ -7,17 +7,17 @@ import {
   flattenBandPowersForDisplay,
   getChannelLabel,
   getSignalGuidanceHint,
-} from './lib/bandpower.js'
-import { card, detailChipBase, getStreamHealthStyle } from './components/legacy/legacyStyles.js'
+} from '../lib/bandpower.js'
+import { card, detailChipBase, getStreamHealthStyle } from '../components/legacy/legacyStyles.js'
 import {
   OperatorChannelCard,
   QualityBadge,
   BandTrendCard,
   BandPowerChart,
-} from './components/legacy/LegacyBandCharts.jsx'
-import { API_BASE, WS_URL } from './lib/api.js'
+} from '../components/legacy/LegacyBandCharts.jsx'
+import { API_BASE, WS_URL } from '../lib/api.js'
 
-export function App() {
+export function LegacyConsole() {
   const [devices, setDevices] = useState([])
   const [deviceStatus, setDeviceStatus] = useState(null)
   const [streamStatus, setStreamStatus] = useState('idle')

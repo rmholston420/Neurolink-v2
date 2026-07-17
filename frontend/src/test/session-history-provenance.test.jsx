@@ -51,6 +51,8 @@ describe('Session history provenance rendering', () => {
 
     render(<App />)
 
+    fireEvent.click(await screen.findByRole('tab', { name: 'Journal' }))
+
     await screen.findByText('manifest-review-session')
 
     const viewButton = await screen.findByRole('button', { name: 'Open review' })
@@ -113,6 +115,8 @@ describe('Session history provenance rendering', () => {
 
     render(<App />)
 
+    fireEvent.click(await screen.findByRole('tab', { name: 'Journal' }))
+
     await screen.findByText('short-review-session')
 
     const viewButton = await screen.findByRole('button', { name: 'Open review' })
@@ -173,6 +177,8 @@ describe('Session history provenance rendering', () => {
     })
 
     render(<App />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Journal' }))
 
     const fallbackTitle = await screen.findByText('legacy-fallback-session')
     const manifestTitle = await screen.findByText('manifest-session')

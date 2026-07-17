@@ -1,0 +1,191 @@
+/* Persistent shell: top nav (Practice/Signal/Journal), scrollable content,
+   right-edge Device rail, bottom Command bar. */
+
+.nl-shell {
+  display: grid;
+  grid-template-columns: 1fr var(--rail-width);
+  grid-template-rows: var(--nav-height) 1fr var(--command-height);
+  grid-template-areas:
+    'nav rail'
+    'main rail'
+    'command command';
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.nl-nav {
+  grid-area: nav;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--stroke-veil);
+  background: linear-gradient(180deg, rgba(22, 27, 51, 0.6), rgba(15, 18, 32, 0.2));
+  backdrop-filter: blur(8px);
+}
+
+.nl-brand {
+  font-family: var(--font-display);
+  font-size: var(--fs-20);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-primary);
+  margin: 0;
+}
+.nl-brand .om {
+  color: var(--accent-gold);
+  margin-right: 8px;
+}
+
+.nl-nav-links {
+  display: flex;
+  gap: 6px;
+  margin-left: 12px;
+}
+
+.nl-tab {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-ui);
+  font-size: var(--fs-14);
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.nl-tab:hover {
+  color: var(--ink-primary);
+  background: var(--bg-shrine-hi);
+}
+.nl-tab[aria-selected='true'] {
+  color: var(--bg-void);
+  background: var(--accent-saffron);
+  border-color: var(--accent-saffron);
+}
+
+.nl-nav-spacer {
+  flex: 1;
+}
+
+.nl-main {
+  grid-area: main;
+  overflow-y: auto;
+  padding: 28px 32px 40px;
+}
+
+.nl-rail {
+  grid-area: rail;
+  border-left: 1px solid var(--stroke-veil);
+  background: var(--bg-shrine);
+  overflow-y: auto;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.nl-command {
+  grid-area: command;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  border-top: 1px solid var(--stroke-veil);
+  background: var(--bg-shrine);
+}
+
+/* Cards */
+.nl-card {
+  background: var(--bg-shrine);
+  border: 1px solid var(--stroke-veil);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  box-shadow: var(--shadow-shrine);
+}
+.nl-card-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-20);
+  margin: 0 0 12px;
+  color: var(--ink-primary);
+}
+.nl-muted {
+  color: var(--ink-muted);
+  font-size: var(--fs-14);
+}
+.nl-whisper {
+  color: var(--ink-whisper);
+  font-size: var(--fs-12);
+}
+
+/* Buttons */
+.nl-btn {
+  appearance: none;
+  border: 1px solid var(--stroke-veil);
+  background: var(--bg-shrine-hi);
+  color: var(--ink-primary);
+  font-family: var(--font-ui);
+  font-size: var(--fs-14);
+  font-weight: 500;
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.nl-btn:hover:not(:disabled) {
+  border-color: var(--accent-saffron);
+  color: var(--accent-saffron);
+}
+.nl-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.nl-btn-primary {
+  background: var(--accent-saffron);
+  border-color: var(--accent-saffron);
+  color: var(--bg-void);
+  font-weight: 600;
+}
+.nl-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  color: var(--bg-void);
+}
+.nl-btn-danger {
+  border-color: var(--accent-maroon);
+  color: var(--accent-fire);
+}
+
+/* Status pill */
+.nl-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-12);
+  font-weight: 600;
+  border: 1px solid var(--stroke-veil);
+  background: var(--bg-shrine-hi);
+  color: var(--ink-muted);
+}
+.nl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-whisper);
+}
+.nl-dot.good { background: var(--accent-teal); box-shadow: 0 0 8px var(--accent-teal); }
+.nl-dot.warn { background: var(--accent-saffron); }
+.nl-dot.bad { background: var(--accent-maroon); }
+
+/* Grids used across pages */
+.nl-grid-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
+.nl-grid-row { display: grid; gap: 20px; }
+.nl-stack { display: flex; flex-direction: column; gap: 20px; }
+
+@media (max-width: 1100px) {
+  .nl-grid-2 { grid-template-columns: 1fr; }
+}
