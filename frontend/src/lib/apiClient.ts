@@ -55,6 +55,14 @@ export const sessionApi = {
 }
 
 // ---- Meditation ---------------------------------------------------------
+export interface Ea1Criterion {
+  value: number | null
+  threshold: number | null
+  range?: [number, number]
+  units: string
+  met: boolean
+}
+
 export interface MeditationClassifyResult {
   region: string
   alchemical_stage: string
@@ -67,7 +75,11 @@ export interface MeditationClassifyResult {
     criteria_met: number
     criteria_total: number
     label: string
-    criteria: Record<string, unknown>
+    gates: { s_space: boolean; motion: boolean }
+    criteria: Record<string, Ea1Criterion>
+    s_space_region: string
+    overlay_mode: string
+    integration_coverage: number
   }
 }
 

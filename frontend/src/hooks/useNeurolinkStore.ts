@@ -4,7 +4,7 @@
 // the Practice hero and Signal page consume.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNeurolinkWS } from './useNeurolinkWS'
-import { deviceApi, streamApi } from '../lib/apiClient'
+import { deviceApi, streamApi, meditationApi, type MeditationClassifyResult } from '../lib/apiClient'
 import { flattenBandPowersForDisplay, HISTORY_LIMIT } from '../lib/bandpower.js'
 import {
   sSpaceRegion,
@@ -13,7 +13,9 @@ import {
   engagementIndex,
   integrationCoverage,
 } from '../components/sSpace.js'
-import type { DeviceStatus, StreamHealth, BandQuality } from '../lib/wire'
+import type { DeviceStatus, StreamHealth, BandQuality, HrvBlock, BreathingBlock } from '../lib/wire'
+
+export type Ea1Result = MeditationClassifyResult['ea1_result']
 
 export interface MeditationDerived {
   bands: { alpha: number; theta: number; beta: number; delta: number; gamma: number }
@@ -146,6 +148,41 @@ export function useNeurolinkStore() {
 
   const battery = frames.eeg?.battery ?? deviceStatus?.battery ?? null
 
+  // ---- HRV + breathing (frame_hrv.py) -----------------------------------
+  const hrv: HrvBlock | null = frames.eeg?.hrv ?? null
+  const breathing: BreathingBlock | null = frames.eeg?.breathing ?? null
+
+  // ---- Shared EA-1 classification ---------------------------------------
+  // Classified server-side off the live band means (plus HRV/breath when
+  // present) so the gauge, halo, and EA1Score widget all share one result.
+  const [ea1, setEa1] = useState<Ea1Result | null>(null)
+  const ea1InFlight = useRef(false)
+  useEffect(() => {
+    if (!frames.eeg || ea1InFlight.current) return
+    ea1InFlight.current = true
+    const b = meditation.bands
+    // The EA-1 breath criterion reads ppg.hr_bpm as the respiratory rate
+    // (MuseLink contract), so pass breathing rate there; HRV RMSSD + Poincaré
+    // ratio come from the hrv block when available.
+    const ppg = hrv
+      ? {
+          hr_bpm: breathing?.rate_bpm ?? 0,
+          hrv_rmssd: hrv.rmssd,
+          poincare: { sd1_sd2_ratio: hrv.sd2 > 0 ? hrv.sd1 / hrv.sd2 : 0 },
+        }
+      : undefined
+    meditationApi
+      .classify({
+        alpha: b.alpha, theta: b.theta, beta: b.beta,
+        delta: b.delta, gamma: b.gamma, faa: meditation.faa ?? 0,
+        fmt: frames.eeg?.pipeline?.fmt ?? 0,
+        ...(ppg ? { ppg } : {}),
+      })
+      .then((r) => setEa1(r.ea1_result))
+      .catch(() => { /* backend offline; keep prior result */ })
+      .finally(() => { ea1InFlight.current = false })
+  }, [frames.eeg])
+
   // ---- Controls ---------------------------------------------------------
   const startStream = useCallback(async () => {
     const r = await streamApi.start()
@@ -185,7 +222,7 @@ export function useNeurolinkStore() {
     deviceStatus, streamHealth, streamHealthHistory, streamStatus, recording,
     flattenedBands, channelNames, bandQuality, bandHistory,
     contact, impedance, focusState, focusScore, fatigue, rawEeg,
-    meditation, battery,
+    meditation, battery, hrv, breathing, ea1,
     connect, disconnect, startStream, stopStream, startRecording, stopRecording,
     refreshDevice, refreshHealth, refreshRecording,
   }
