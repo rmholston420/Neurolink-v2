@@ -16,6 +16,7 @@ import { CalibrationPanel } from '../components/signal/CalibrationPanel'
 import { BadChannelPanel } from '../components/signal/BadChannelPanel'
 import { ArtifactGuidePanel } from '../components/signal/ArtifactGuidePanel'
 import { FitCheckOverlay } from '../components/signal/FitCheckOverlay'
+import { RawTraces } from '../components/signal/RawTraces'
 
 // Signal is the full instrumentation view: every Tier-A visualization bound to
 // a real WS frame or REST poll. Per-channel data is re-keyed from BrainFlow
@@ -39,6 +40,7 @@ export function SignalPage({ store }: { store: NeurolinkStore }) {
     deviceStatus,
     frames,
     poorFit,
+    signalMode,
   } = store
 
   const channelBands = useMemo(() => {
@@ -71,6 +73,14 @@ export function SignalPage({ store }: { store: NeurolinkStore }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <DeviceStatusBar battery={battery} contactMean={contactMean} source={source} connected={connected} />
       </div>
+
+      {signalMode !== 'meditation' && (
+        <RawTraces
+          signals={signals}
+          timestamps={frames.eeg?.ts ?? frames.eeg?.timestamps ?? []}
+          mode={signalMode}
+        />
+      )}
 
       <BandTrend history={bandHistory} />
 

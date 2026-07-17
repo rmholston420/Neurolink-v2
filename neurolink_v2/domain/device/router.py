@@ -10,6 +10,7 @@ from .manager import device_manager
 from .preferences import get_last_paired, upsert_last_paired
 from neurolink_v2.device_control.discovery import scan_for_muse_devices
 from neurolink_v2.domain.config.settings import settings
+from neurolink_v2.domain.stream.mode import stream_mode
 
 log = logging.getLogger(__name__)
 
@@ -104,4 +105,5 @@ async def status():
         'channel_names': device_manager.channel_names,
         'preset': device_manager.preset,
         'transport_metadata': device_manager.transport_metadata,
+        'signal_mode': stream_mode.mode,
     }

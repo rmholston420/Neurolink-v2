@@ -72,12 +72,15 @@ class SignalPipelineService:
         with self._lock:
             self._pipeline._stage2.set_manual_bad(channel, bad)
 
-    def process_snapshot(self, snap: dict) -> PipelineResult | None:
+    def process_snapshot(
+        self, snap: dict, mode: str = "meditation"
+    ) -> PipelineResult | None:
         """Run the DSP pipeline on one broadcaster EEG snapshot.
 
         ``snap['eeg']`` is a ``{channel_key: [float, ...]}`` mapping as produced
         by ``device_manager.get_eeg_snapshot``.  Only the first four entries
         (TP9, AF7, AF8, TP10) are used to build the pipeline's ``eeg_buffer``.
+        ``mode`` selects the signal-processing path (see ``EEGPipeline.process``).
         Returns ``None`` when the snapshot carries no usable EEG.
         """
         eeg_map = snap.get("eeg") or {}
@@ -90,7 +93,7 @@ class SignalPipelineService:
             source="athena",
         )
         with self._lock:
-            return self._pipeline.process(sample)
+            return self._pipeline.process(sample, mode=mode)
 
 
 signal_service = SignalPipelineService()

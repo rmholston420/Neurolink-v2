@@ -27,7 +27,8 @@ import type { BandName } from '../lib/vajra'
 // gold breath halo only lights on a real result). Every Tier-B instrument lives
 // here as a first-class citizen wired to live store data.
 export function PracticePage({ store, onGoToSignal }: { store: NeurolinkStore; onGoToSignal?: () => void }) {
-  const { meditation, hrv, breathing, ea1, poorFit } = store
+  const { meditation, hrv, breathing, ea1, poorFit, signalMode } = store
+  const rawMode = signalMode !== 'meditation'
   const audio = useAudioFeedback()
   const { coherence } = useHRVCoherence(hrv?.ibi_ms ?? null)
 
@@ -47,6 +48,23 @@ export function PracticePage({ store, onGoToSignal }: { store: NeurolinkStore; o
   return (
     <div className="nl-page nl-page-practice">
       <FitCheckBanner active={poorFit} onGoToSignal={onGoToSignal} />
+      {rawMode && (
+        <div
+          role="alert"
+          style={{
+            padding: '12px 16px', borderRadius: 8,
+            background: 'rgba(232,90,79,0.12)', border: '1px solid var(--accent-fire)',
+            color: 'var(--ink-primary)', fontSize: 'var(--fs-14)',
+          }}
+        >
+          Raw signal mode active — meditation features are disabled. Switch to Meditation mode in the top nav to resume practice.
+        </div>
+      )}
+      <div
+        className="nl-stack"
+        aria-hidden={rawMode}
+        style={rawMode ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
+      >
       <div className="nl-hero">
         <NeurofeedbackGauge meditation={meditation} ea1Eligible={eligible} ea1Score={score} breathPeriodMs={breathPeriodMs} />
         <div className="nl-hero-caption">
@@ -96,6 +114,7 @@ export function PracticePage({ store, onGoToSignal }: { store: NeurolinkStore; o
       <AlchemicalJournal stage={meditation.stage} region={meditation.region} />
 
       <PracticeTracker coverage={meditation.coverage} />
+      </div>
     </div>
   )
 }

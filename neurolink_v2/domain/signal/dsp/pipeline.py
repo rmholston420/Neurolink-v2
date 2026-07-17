@@ -268,6 +268,43 @@ def _compute_bands_single_psd(
 
 
 # ---------------------------------------------------------------------------
+# Notch filter (signal-mode "notch")
+# ---------------------------------------------------------------------------
+
+
+def apply_notch(
+    eeg_arr: np.ndarray,
+    mains_hz: float,
+    fs: float = _EEG_FS,
+    q: float = 30.0,
+) -> np.ndarray:
+    """Apply a single IIR notch at ``mains_hz`` to each channel.
+
+    Used by signal-mode ``notch`` to strip mains hum without running the full
+    DSP stack. Uses ``scipy.signal.iirnotch`` (Q=30 by default) applied
+    zero-phase with ``filtfilt``. Returns the input unchanged on any failure or
+    when the buffer is too short for stable filtering.
+    """
+    if eeg_arr is None:
+        return eeg_arr
+    arr = eeg_arr if eeg_arr.ndim == 2 else eeg_arr[np.newaxis, :]
+    nyq = fs / 2.0
+    if not (0 < mains_hz < nyq):
+        return eeg_arr
+    if arr.shape[1] < 12:  # filtfilt needs a few samples; skip tiny buffers
+        return eeg_arr
+    try:
+        b, a = sp_signal.iirnotch(mains_hz, q, fs)
+        out = arr.astype(np.float64, copy=True)
+        for ch in range(out.shape[0]):
+            out[ch] = sp_signal.filtfilt(b, a, out[ch])
+        return out.astype(np.float32)
+    except Exception as exc:  # pragma: no cover - defensive, never kill the pump
+        log.warning("notch_filter_error", error=str(exc))
+        return eeg_arr
+
+
+# ---------------------------------------------------------------------------
 # EEGPipeline
 # ---------------------------------------------------------------------------
 
@@ -334,14 +371,118 @@ class EEGPipeline:
             return "env_not_ready"
         return "settling"
 
-    def process(self, sample: EEGSample) -> PipelineResult | None:
-        """Run the full DSP pipeline on one EEGSample.
+    def _process_bypass(self, sample: EEGSample, mode: str) -> PipelineResult | None:
+        """DSP-bypass path for signal-mode ``raw`` and ``notch``.
+
+        Emits the electrode signal straight to the wire with no buffer wait, no
+        interpolation, and no amplitude rejection. ``notch`` first strips mains
+        hum via ``apply_notch``. Band powers are still computed (from the raw /
+        notched signal) so the existing Signal panels keep rendering — nonsense
+        in raw mode, which is intentional and educational. Every frame counts as
+        clean in ``StreamHealth``.
+        """
+        from neurolink_v2.domain.config.settings import settings
+        from neurolink_v2.domain.signal.dsp.breathing import compute_breathing
+        from neurolink_v2.domain.signal.dsp.imu import head_orientation
+        from neurolink_v2.domain.signal.dsp.ppg import compute_ppg
+
+        tick_start = time.monotonic()
+
+        eeg_arr: np.ndarray | None = None
+        if sample.eeg_buffer:
+            _min_len = min(len(b) for b in sample.eeg_buffer)
+            if _min_len >= 2:
+                eeg_arr = np.array(
+                    [b[:_min_len] for b in sample.eeg_buffer], dtype=np.float32
+                )
+
+        if mode == "notch" and eeg_arr is not None:
+            eeg_arr = apply_notch(eeg_arr, float(settings.mains_hz), fs=_EEG_FS)
+
+        bands_dict = (
+            _compute_bands_single_psd(eeg_arr, fs=_EEG_FS) if eeg_arr is not None else {}
+        )
+        bands = BandPowers(
+            alpha=bands_dict.get("alpha", 0.0),
+            theta=bands_dict.get("theta", 0.0),
+            beta=bands_dict.get("beta", 0.0),
+            delta=bands_dict.get("delta", 0.0),
+            gamma=bands_dict.get("gamma", 0.0),
+        )
+
+        eeg_samples: list[list[float]] = []
+        if eeg_arr is not None and eeg_arr.ndim == 2:
+            n_samples = eeg_arr.shape[1]
+            start = max(0, n_samples - _EEG_SAMPLES_WINDOW)
+            eeg_samples = eeg_arr[:, start:].tolist()
+
+        # PPG / breathing / IMU are independent of the EEG DSP stages, so they
+        # keep running in raw and notch modes (empty buffers simply yield None).
+        ppg_payload: PPGPayload | None = None
+        if sample.ppg_buffer and len(sample.ppg_buffer) >= _MIN_PPG_SAMPLES:
+            ppg_arr = np.array(sample.ppg_buffer, dtype=np.float32)
+            ppg_payload = compute_ppg(ppg_arr, fs=_PPG_FS)
+
+        accel_z: np.ndarray | None = None
+        if sample.accel_buffer and len(sample.accel_buffer) >= 3:
+            accel_z = np.array(sample.accel_buffer[2], dtype=np.float32)
+        ibis_for_breathing = ppg_payload.ibi_ms if ppg_payload else []
+        breathing_payload = compute_breathing(ibis_for_breathing, accel_z=accel_z)
+
+        imu_payload: IMUPayload | None = None
+        if sample.accel_buffer and sample.gyro_buffer:
+            accel_arr_imu = np.array(sample.accel_buffer, dtype=np.float32)
+            gyro_arr = np.array(sample.gyro_buffer, dtype=np.float32)
+            if accel_arr_imu.shape[1] > 0:
+                imu_payload = head_orientation(accel_arr_imu, gyro_arr)
+
+        fnirs_oxy = sample.extra.get("fnirs_oxy")
+        fnirs_deoxy = sample.extra.get("fnirs_deoxy")
+
+        tick_ms = (time.monotonic() - tick_start) * 1000.0
+        # Bypass frames are never amplitude-rejected: every frame is clean.
+        self._health.record_frame(rejected=False, tick_ms=tick_ms)
+
+        return PipelineResult(
+            bands=bands,
+            eeg_samples=eeg_samples,
+            bad_channels=[],
+            artifact_rejected=False,
+            artifact_reasons=[],
+            artifact_annotations=[],
+            artifact_correction_plan=None,
+            baseline_phase=self._baseline.phase,
+            ppg_payload=ppg_payload,
+            breathing_payload=breathing_payload,
+            imu_payload=imu_payload,
+            faa=None,
+            fmt=None,
+            fnirs_oxy=fnirs_oxy,
+            fnirs_deoxy=fnirs_deoxy,
+        )
+
+    def process(
+        self, sample: EEGSample, mode: str = "meditation"
+    ) -> PipelineResult | None:
+        """Run the DSP pipeline on one EEGSample.
+
+        ``mode`` selects the signal-processing path:
+
+        * ``meditation`` (default) — the full DSP stack (Stages 0–6) runs and
+          amplitude-rejected frames are dropped from band-power extraction.
+        * ``notch`` — mains-hum removal only (``apply_notch`` at the configured
+          ``MAINS_HZ``); Stages 1/2/3 are bypassed and every frame is clean.
+        * ``raw`` — fully raw microvolts; no filtering, rejection, or
+          interpolation. Every frame is clean.
 
         Returns
         -------
         PipelineResult on success, or None when Stage 0 holds the frame
-        (settling / impedance gate).
+        (settling / impedance gate). ``raw``/``notch`` never gate on Stage 0.
         """
+        if mode in ("raw", "notch"):
+            return self._process_bypass(sample, mode)
+
         from neurolink_v2.domain.signal.dsp import filter_toggles as _ft_module
         from neurolink_v2.domain.signal.dsp.breathing import compute_breathing
         from neurolink_v2.domain.signal.dsp.imu import head_orientation
