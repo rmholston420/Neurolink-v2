@@ -137,6 +137,27 @@ class WanderingEvent(Base):
     created_at: Mapped[str] = mapped_column(String(64), default="")
 
 
+class DevicePreference(Base):
+    """Last-paired device, persisted so the backend can auto-reconnect on boot.
+
+    A single sentinel row (``key == 'last_paired_device'``) records the most
+    recently connected headset so a fresh uvicorn process can attempt one
+    background reconnect without the user re-issuing a Scan+Connect from the UI.
+    """
+
+    __tablename__ = "device_preferences"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    ble_address: Mapped[str] = mapped_column(String(128), default="")
+    display_name: Mapped[str] = mapped_column(String(128), default="")
+    preset: Mapped[str] = mapped_column(String(32), default="")
+    board_id: Mapped[int] = mapped_column(Integer, default=0)
+    connected_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 class Calibration(Base):
     """Per-band resting baseline (ported from MuseLink calibrations)."""
 

@@ -46,10 +46,26 @@ function MiniTopo({ store }: { store: NeurolinkStore }) {
 }
 
 export function DeviceRail({ store, onRecalibrate }: { store: NeurolinkStore; onRecalibrate?: () => void }) {
-  const { deviceStatus, streamHealth, wsStatus, battery } = store
+  const {
+    deviceStatus, streamHealth, wsStatus, battery,
+    scan, connect, disconnect,
+    scanning, connecting, scanResults, selectedDevice, setSelectedDevice,
+    lastPaired, deviceError,
+  } = store
   const connected = Boolean(deviceStatus?.has_board)
   const streaming = Boolean(deviceStatus?.is_streaming)
   const transport = deviceStatus?.transport_metadata?.backend || deviceStatus?.transport_metadata?.transport || 'brainflow'
+
+  // Connect is enabled when the user has a target: a picked scan result or a
+  // persisted last-paired device (so "Reconnect to X" works with no scan).
+  const hasTarget = Boolean(selectedDevice || lastPaired)
+  const connectLabel = connecting
+    ? 'Connecting…'
+    : selectedDevice
+      ? `Connect ${selectedDevice.name}`
+      : lastPaired
+        ? `Reconnect to ${lastPaired.display_name}`
+        : 'Connect'
 
   return (
     <aside className="nl-rail" aria-label="Device status">
@@ -63,6 +79,71 @@ export function DeviceRail({ store, onRecalibrate }: { store: NeurolinkStore; on
           <StatusPill tone={wsStatus === 'open' ? 'good' : wsStatus === 'connecting' ? 'warn' : 'bad'}>
             socket {wsStatus}
           </StatusPill>
+        </div>
+
+        <div className="nl-stack" style={{ gap: 8, marginTop: 12 }}>
+          <button
+            type="button"
+            className="nl-btn"
+            style={{ width: '100%' }}
+            onClick={() => { void scan() }}
+            disabled={scanning}
+            aria-label="Scan for nearby devices"
+            aria-busy={scanning}
+          >
+            {scanning ? 'Scanning…' : 'Scan'}
+          </button>
+
+          {scanResults.length > 0 && (
+            <label className="nl-whisper" style={{ display: 'block' }}>
+              <span style={{ display: 'block', marginBottom: 4 }}>Discovered devices</span>
+              <select
+                className="nl-btn"
+                style={{ width: '100%', cursor: 'pointer' }}
+                aria-label="Select a discovered device"
+                value={selectedDevice?.address ?? ''}
+                onChange={(e) => {
+                  const dev = scanResults.find((d) => d.address === e.target.value) ?? null
+                  setSelectedDevice(dev)
+                }}
+              >
+                {scanResults.map((d) => (
+                  <option key={d.address} value={d.address}>
+                    {d.name} · {d.address}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <button
+            type="button"
+            className="nl-btn nl-btn-primary"
+            style={{ width: '100%' }}
+            onClick={() => { void connect() }}
+            disabled={connecting || (!hasTarget)}
+            aria-label={connectLabel}
+            aria-busy={connecting}
+          >
+            {connectLabel}
+          </button>
+
+          <button
+            type="button"
+            className="nl-btn"
+            style={{ width: '100%' }}
+            onClick={() => { void disconnect() }}
+            disabled={!connected && !streaming}
+            aria-label="Disconnect device"
+          >
+            Disconnect
+          </button>
+
+          {deviceError && (
+            <div role="alert" className="nl-whisper" style={{ color: 'var(--accent-maroon)' }}>
+              {deviceError}
+            </div>
+          )}
         </div>
       </div>
 

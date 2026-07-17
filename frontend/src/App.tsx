@@ -23,7 +23,7 @@ export function App() {
     <div className="nl-shell">
       <TopNav active={tab} onChange={setTab} />
       <main className="nl-main" role="main">
-        {tab === 'practice' && <PracticePage store={store} />}
+        {tab === 'practice' && <PracticePage store={store} onGoToSignal={() => setTab('signal')} />}
         {tab === 'signal' && <SignalPage store={store} />}
         {tab === 'journal' && <JournalPage store={store} />}
       </main>

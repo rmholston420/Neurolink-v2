@@ -48,6 +48,10 @@ class StreamBroadcaster:
         self._running = False
         self._tasks: set[asyncio.Task] = set()
 
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
     async def subscribe(self, ws: WebSocket) -> None:
         await ws.accept()
         self._clients.add(ws)

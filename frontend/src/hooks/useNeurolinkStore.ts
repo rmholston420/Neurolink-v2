@@ -4,7 +4,8 @@
 // the Practice hero and Signal page consume.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNeurolinkWS } from './useNeurolinkWS'
-import { deviceApi, streamApi, meditationApi, type MeditationClassifyResult } from '../lib/apiClient'
+import { deviceApi, streamApi, meditationApi, ApiError, type MeditationClassifyResult } from '../lib/apiClient'
+import type { DeviceCandidate, LastPairedDevice } from '../lib/wire'
 import { flattenBandPowersForDisplay, HISTORY_LIMIT } from '../lib/bandpower.js'
 import {
   sSpaceRegion,
@@ -29,6 +30,11 @@ export interface MeditationDerived {
 
 const EMPTY_BANDS = { alpha: 0, theta: 0, beta: 0, delta: 0, gamma: 0 }
 
+// Fit-check thresholds: all channels at/below this contact score for this many
+// seconds triggers the "adjust headset fit" overlay.
+const FIT_CHECK_CONTACT_MAX = 0.05
+const FIT_CHECK_SECS = 5
+
 export function useNeurolinkStore() {
   const { frames, status: wsStatus } = useNeurolinkWS(true)
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus | null>(null)
@@ -38,6 +44,14 @@ export function useNeurolinkStore() {
   const [bandHistory, setBandHistory] = useState<Array<Record<string, number>>>([])
   const [streamHealthHistory, setStreamHealthHistory] = useState<number[]>([])
   const lastEegRef = useRef<unknown>(null)
+
+  // ---- Device control (scan / connect / disconnect) ---------------------
+  const [deviceError, setDeviceError] = useState<string | null>(null)
+  const [scanning, setScanning] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [scanResults, setScanResults] = useState<DeviceCandidate[]>([])
+  const [selectedDevice, setSelectedDevice] = useState<DeviceCandidate | null>(null)
+  const [lastPaired, setLastPaired] = useState<LastPairedDevice | null>(null)
 
   const refreshDevice = useCallback(async () => {
     try {
@@ -66,17 +80,27 @@ export function useNeurolinkStore() {
     }
   }, [])
 
+  const refreshLastPaired = useCallback(async () => {
+    try {
+      const r = await deviceApi.lastPaired()
+      setLastPaired(r.device)
+    } catch {
+      /* backend offline; leave prior state */
+    }
+  }, [])
+
   // Device status polls every 2 s, stream health every 1 s (per the brief).
   useEffect(() => {
     refreshDevice()
     refreshRecording()
+    refreshLastPaired()
     const d = setInterval(refreshDevice, 2000)
     const h = setInterval(refreshHealth, 1000)
     return () => {
       clearInterval(d)
       clearInterval(h)
     }
-  }, [refreshDevice, refreshHealth, refreshRecording])
+  }, [refreshDevice, refreshHealth, refreshRecording, refreshLastPaired])
 
   // Roll band history off each fresh EEG frame (first channel).
   useEffect(() => {
@@ -137,6 +161,27 @@ export function useNeurolinkStore() {
   // first usable EEG frame — components render honest "no data" states, never
   // fabricated values.
   const contact: Record<string, number> = useMemo(() => frames.eeg?.contact || {}, [frames.eeg])
+
+  // ---- Fit check (Fix 4) ------------------------------------------------
+  // Frontend heuristic: when every channel's contact score sits at/near zero
+  // (flat/disconnected OR railing far above the 100 µV EEG ceiling) for a
+  // rolling 5 s window, the headset almost certainly isn't in skin contact.
+  // Drives the Signal-page overlay + Practice-page banner; clears the instant
+  // any channel returns to range.
+  const [poorFit, setPoorFit] = useState(false)
+  const poorFitStartRef = useRef<number | null>(null)
+  useEffect(() => {
+    const vals = Object.values(contact)
+    const allLow = vals.length > 0 && vals.every((v) => v <= FIT_CHECK_CONTACT_MAX)
+    if (!allLow) {
+      poorFitStartRef.current = null
+      setPoorFit(false)
+      return
+    }
+    if (poorFitStartRef.current == null) poorFitStartRef.current = Date.now()
+    const elapsedS = (Date.now() - poorFitStartRef.current) / 1000
+    setPoorFit(elapsedS >= FIT_CHECK_SECS)
+  }, [contact])
   const impedance: Record<string, number> = useMemo(() => frames.eeg?.impedance || {}, [frames.eeg])
   const focusState = frames.eeg?.focus_state ?? null
   const focusScore = frames.eeg?.focus_score ?? null
@@ -185,14 +230,26 @@ export function useNeurolinkStore() {
 
   // ---- Controls ---------------------------------------------------------
   const startStream = useCallback(async () => {
-    const r = await streamApi.start()
-    if (r.status) setStreamStatus('streaming')
+    try {
+      const r = await streamApi.start()
+      if (r.status) setStreamStatus('streaming')
+      setDeviceError(null)
+    } catch (e) {
+      // 409 = device not connected; surface it so the user knows to connect.
+      setDeviceError(e instanceof ApiError ? e.message : 'Could not start stream')
+    }
     await refreshDevice()
   }, [refreshDevice])
 
   const stopStream = useCallback(async () => {
-    await streamApi.stop()
-    setStreamStatus('stopped')
+    try {
+      await streamApi.stop()
+      setStreamStatus('stopped')
+    } catch (e) {
+      // 409 = not streaming; treat as already-stopped, no scary error.
+      if (e instanceof ApiError && e.status === 409) setStreamStatus('stopped')
+      else setDeviceError(e instanceof ApiError ? e.message : 'Could not stop stream')
+    }
     await refreshDevice()
   }, [refreshDevice])
 
@@ -206,13 +263,51 @@ export function useNeurolinkStore() {
     setRecording({ recording: Boolean(r.recording), path: r.path || '' })
   }, [])
 
-  const connect = useCallback(async () => {
-    await deviceApi.connect()
+  const scan = useCallback(async () => {
+    setScanning(true)
+    setDeviceError(null)
+    try {
+      const r = await deviceApi.scan()
+      setScanResults(r.devices)
+      if (r.devices.length && !selectedDevice) setSelectedDevice(r.devices[0])
+      return r.devices
+    } catch (e) {
+      setDeviceError(e instanceof ApiError ? e.message : 'Scan failed')
+      return []
+    } finally {
+      setScanning(false)
+    }
+  }, [selectedDevice])
+
+  // Connect to an explicit address, else the selected scan result, else the
+  // last-paired device. A 409 already-connected is a normal no-op, not an error.
+  const connect = useCallback(async (address?: string) => {
+    const target = address ?? selectedDevice?.address ?? lastPaired?.ble_address
+    setConnecting(true)
+    setDeviceError(null)
+    try {
+      await deviceApi.connect({
+        ble_address: target,
+        display_name: selectedDevice?.name ?? lastPaired?.display_name,
+      })
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 409)) {
+        setDeviceError(e instanceof ApiError ? e.message : 'Connect failed')
+      }
+    } finally {
+      setConnecting(false)
+    }
     await refreshDevice()
-  }, [refreshDevice])
+    await refreshLastPaired()
+  }, [refreshDevice, refreshLastPaired, selectedDevice, lastPaired])
 
   const disconnect = useCallback(async () => {
-    await deviceApi.disconnect()
+    setDeviceError(null)
+    try {
+      await deviceApi.disconnect()
+    } catch (e) {
+      setDeviceError(e instanceof ApiError ? e.message : 'Disconnect failed')
+    }
     setStreamStatus('idle')
     await refreshDevice()
   }, [refreshDevice])
@@ -224,7 +319,12 @@ export function useNeurolinkStore() {
     contact, impedance, focusState, focusScore, fatigue, rawEeg,
     meditation, battery, hrv, breathing, ea1,
     connect, disconnect, startStream, stopStream, startRecording, stopRecording,
-    refreshDevice, refreshHealth, refreshRecording,
+    refreshDevice, refreshHealth, refreshRecording, refreshLastPaired,
+    // Device control
+    deviceError, scanning, connecting, scanResults, selectedDevice, setSelectedDevice,
+    lastPaired, scan, clearDeviceError: () => setDeviceError(null),
+    // Fit check
+    poorFit,
   }
 }
 
